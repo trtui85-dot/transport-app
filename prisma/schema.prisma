@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  BRANCH_MANAGER
+  TICKET_AGENT
+  CARGO_AGENT
+  DRIVER
+  ACCOUNTANT
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum TripStatus {
+  SCHEDULED
+  OPEN
+  FULL
+  DEPARTED
+  IN_TRANSIT
+  ARRIVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  DEBT
+  WALLET
+}
+
+enum TicketStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum CargoStatus {
+  PENDING
+  IN_TRANSIT
+  ARRIVED
+  DELIVERED
+  CANCELLED
+}
+
+enum DebtType {
+  RECEIVABLE
+  PAYABLE
+}
+
+enum DebtStatus {
+  OPEN
+  PARTIAL
+  PAID
+}
+
+enum SalaryStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String   @unique
+  pin         String
+  role        UserRole
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  baseSalary  Float    @default(0)
+  commissionPerTrip Float @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  tickets     Ticket[]
+  trips       Trip[]     @relation("DriverTrips")
+  salaries    Salary[]
+  auditLogs   AuditLog[]
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String?
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  users     User[]
+  vehicles  Vehicle[]
+  departures Trip[]  @relation("DepartureBranch")
+  arrivals   Trip[]  @relation("ArrivalBranch")
+  sentCargo  Cargo[] @relation("SenderBranch")
+  recvCargo  Cargo[] @relation("ReceiverBranch")
+  expenses   Expense[]
+  tickets    Ticket[]
+}
+
+model Vehicle {
+  id           String      @id @default(cuid())
+  type         String
+  plateNumber  String      @unique
+  seatCount    Int
+  branchId     String
+  branch       Branch      @relation(fields: [branchId], references: [id])
+  status       VehicleStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  trips        Trip[]
+}
+
+model Trip {
+  id              String    @id @default(cuid())
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  driverId        String
+  driver          User      @relation("DriverTrips", fields: [driverId], references: [id])
+  departureBranchId String
+  departureBranch Branch   @relation("DepartureBranch", fields: [departureBranchId], references: [id])
+  arrivalBranchId   String
+  arrivalBranch   Branch   @relation("ArrivalBranch", fields: [arrivalBranchId], references: [id])
+  departureTime   DateTime
+  arrivalTime     DateTime?
+  price           Float
+  status          TripStatus @default(SCHEDULED)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  tickets         Ticket[]
+  cargo           Cargo[]
+}
+
+model Ticket {
+  id              String        @id @default(cuid())
+  tripId          String
+  trip            Trip          @relation(fields: [tripId], references: [id])
+  seatNumber      Int
+  passengerName   String
+  passengerPhone  String
+  paymentMethod   PaymentMethod @default(CASH)
+  amount          Float
+  status          TicketStatus  @default(CONFIRMED)
+  branchId        String?
+  branch          Branch?       @relation(fields: [branchId], references: [id])
+  issuedById      String?
+  issuedBy        User?         @relation(fields: [issuedById], references: [id])
+  issuedAt        DateTime      @default(now())
+  notes           String?
+}
+
+model Cargo {
+  id              String      @id @default(cuid())
+  trackingCode    String      @unique
+  description     String
+  weight          Float
+  packageType     String      @default("box")
+  senderName      String
+  senderPhone     String
+  receiverName    String
+  receiverPhone   String
+  senderBranchId  String
+  senderBranch    Branch      @relation("SenderBranch", fields: [senderBranchId], references: [id])
+  receiverBranchId String
+  receiverBranch  Branch      @relation("ReceiverBranch", fields: [receiverBranchId], references: [id])
+  tripId          String?
+  trip            Trip?       @relation(fields: [tripId], references: [id])
+  amount          Float
+  paymentMethod   PaymentMethod @default(CASH)
+  status          CargoStatus @default(PENDING)
+  deliveredAt     DateTime?
+  deliveredById   String?
+  createdAt       DateTime    @default(now())
+  notes           String?
+}
+
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  expenses  Expense[]
+}
+
+model Expense {
+  id                String          @id @default(cuid())
+  expenseCategoryId String
+  expenseCategory   ExpenseCategory @relation(fields: [expenseCategoryId], references: [id])
+  amount            Float
+  branchId          String?
+  branch            Branch?         @relation(fields: [branchId], references: [id])
+  description       String?
+  date              DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+}
+
+model Debt {
+  id            String     @id @default(cuid())
+  contactName   String
+  contactPhone  String
+  type          DebtType
+  amount        Float
+  paidAmount    Float      @default(0)
+  status        DebtStatus @default(OPEN)
+  branchId      String?
+  description   String?
+  createdAt     DateTime   @default(now())
+  payments      DebtPayment[]
+}
+
+model DebtPayment {
+  id        String   @id @default(cuid())
+  debtId    String
+  debt      Debt     @relation(fields: [debtId], references: [id])
+  amount    Float
+  date      DateTime @default(now())
+}
+
+model Salary {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  month     String
+  base      Float
+  commission Float      @default(0)
+  total     Float
+  status    SalaryStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime     @default(now())
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}

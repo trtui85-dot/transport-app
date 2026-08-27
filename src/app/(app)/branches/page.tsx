@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Building2, Phone, MapPin, X, Search } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Building2,
+  Phone,
+  MapPin,
+  X,
+  Search,
+  Wallet,
+  Check,
+  RefreshCw,
+} from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 interface Branch {
@@ -14,6 +26,14 @@ interface Branch {
   createdAt: string;
 }
 
+interface PayMethod {
+  id: string;
+  name: string;
+  nameAr: string;
+  logo: string | null;
+  isCredit: boolean;
+}
+
 interface User {
   userId: string;
   role: string;
@@ -21,7 +41,7 @@ interface User {
 }
 
 export default function BranchesPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -37,6 +57,12 @@ export default function BranchesPage() {
     address: "",
     phone: "",
   });
+
+  const [allMethods, setAllMethods] = useState<PayMethod[]>([]);
+  const [assigningBranch, setAssigningBranch] = useState<Branch | null>(null);
+  const [assignedIds, setAssignedIds] = useState<string[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignSaving, setAssignSaving] = useState(false);
 
   const isOwner = user?.role === "OWNER";
 
@@ -68,7 +94,54 @@ export default function BranchesPage() {
   useEffect(() => {
     fetchUser();
     fetchBranches();
+    fetch("/api/payment-methods?all=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setAllMethods(d?.methods || []))
+      .catch(() => {});
   }, [fetchUser, fetchBranches]);
+
+  const openAssign = async (branch: Branch) => {
+    setAssigningBranch(branch);
+    setAssignedIds([]);
+    setAssignLoading(true);
+    try {
+      const res = await fetch(`/api/branch-payments?branchId=${branch.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAssignedIds(((data.methods || []) as { id: string }[]).map((m) => m.id));
+      }
+    } catch {}
+    setAssignLoading(false);
+  };
+
+  const toggleAssigned = (id: string) => {
+    setAssignedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSaveAssign = async () => {
+    if (!assigningBranch || assignSaving) return;
+    setAssignSaving(true);
+    try {
+      const res = await fetch(
+        `/api/branches/${assigningBranch.id}/payment-methods`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentMethodConfigIds: assignedIds }),
+        }
+      );
+      if (res.ok) {
+        setAssigningBranch(null);
+      } else {
+        setError(t("error"));
+      }
+    } catch {
+      setError(t("error"));
+    }
+    setAssignSaving(false);
+  };
 
   const filtered = branches.filter(
     (b) =>
@@ -220,6 +293,13 @@ export default function BranchesPage() {
                       {t("edit")}
                     </button>
                     <button
+                      onClick={() => openAssign(branch)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rope/10 hover:bg-rope/15 rounded-lg text-xs text-rope transition-colors"
+                    >
+                      <Wallet size={12} />
+                      {t("paymentMethods")}
+                    </button>
+                    <button
                       onClick={() => setConfirmDelete(branch)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-xs text-red-600 transition-colors"
                     >
@@ -305,6 +385,87 @@ export default function BranchesPage() {
                 className="flex-1 py-3 bg-rope text-white rounded-xl text-sm font-medium"
               >
                 {t("save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {assigningBranch && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setAssigningBranch(null)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-bold text-ink">
+                {t("paymentMethods")} - {assigningBranch.name}
+              </h2>
+              <button onClick={() => setAssigningBranch(null)} className="p-2 hover:bg-sand rounded-xl">
+                <X size={20} className="text-ink/40" />
+              </button>
+            </div>
+            <p className="text-xs text-ink/40 mb-4">
+              {assigningBranch.city}
+            </p>
+
+            {assignLoading ? (
+              <div className="flex justify-center py-10">
+                <RefreshCw size={22} className="animate-spin text-rope" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {allMethods.map((m) => {
+                  const checked = assignedIds.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleAssigned(m.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-start transition-colors ${
+                        checked
+                          ? "border-rope bg-rope-soft"
+                          : "border-sand-dim bg-sand"
+                      }`}
+                    >
+                      <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-sand-dim flex items-center justify-center">
+                        {m.logo ? (
+                          <img src={m.logo} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Wallet size={16} className="text-ink/40" />
+                        )}
+                      </div>
+                      <span className="flex-1 text-sm font-medium text-ink">
+                        {lang === "ar" && m.nameAr ? m.nameAr : m.name}
+                      </span>
+                      {m.isCredit && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-semibold">
+                          {lang === "ar" ? "أجل" : "Ajl"}
+                        </span>
+                      )}
+                      <span
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          checked ? "bg-rope border-rope" : "border-sand-dim"
+                        }`}
+                      >
+                        {checked && <Check size={14} className="text-white" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setAssigningBranch(null)}
+                className="flex-1 py-3 border border-sand-dim rounded-xl text-sm text-ink/60 font-medium"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={handleSaveAssign}
+                disabled={assignSaving}
+                className="flex-1 py-3 bg-rope text-white rounded-xl text-sm font-medium disabled:opacity-50"
+              >
+                {assignSaving ? t("loading") : t("save")}
               </button>
             </div>
           </div>

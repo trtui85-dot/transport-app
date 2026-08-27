@@ -45,6 +45,7 @@ export async function GET() {
             },
           },
           issuedBy: { select: { id: true, name: true } },
+          paymentMethodConfig: true,
         },
       }),
       prisma.cargo.findMany({ where: { senderBranchId: branchId } }),
@@ -56,10 +57,12 @@ export async function GET() {
     ]);
 
     const todayTickets = tickets.filter((tk) => isSameLocalDay(tk.issuedAt, now));
+    const paidTodayTickets = todayTickets.filter((tk) => tk.paid);
     const todayCargo = cargo.filter((c) => isSameLocalDay(c.createdAt, now));
     const todayExpenses = expenses.filter((e) => isSameLocalDay(e.date, now));
 
-    const ticketRevenue = todayTickets.reduce((s, tk) => s + tk.amount, 0);
+    const ticketRevenue = paidTodayTickets.reduce((s, tk) => s + tk.amount, 0);
+    const unpaidToday = todayTickets.length - paidTodayTickets.length;
     const cargoRevenue = todayCargo.reduce((s, c) => s + c.amount, 0);
     const expenseAmount = todayExpenses.reduce((s, e) => s + e.amount, 0);
 
@@ -72,6 +75,13 @@ export async function GET() {
         amount: tk.amount,
         time: tk.issuedAt.toISOString(),
         paymentMethod: tk.paymentMethod,
+        paymentMethodLabel:
+          tk.paymentMethodConfig?.nameAr ||
+          tk.paymentMethodConfig?.name ||
+          tk.paymentMethod,
+        paymentMethodLogo: tk.paymentMethodConfig?.logo || null,
+        paid: tk.paid,
+        paidAt: tk.paidAt ? tk.paidAt.toISOString() : null,
       })),
       ...todayCargo.map((c) => ({
         id: c.id,
@@ -100,6 +110,7 @@ export async function GET() {
       summary: {
         tickets: todayTickets.length,
         ticketRevenue,
+        unpaidToday,
         cargo: todayCargo.length,
         cargoRevenue,
         expenses: todayExpenses.length,

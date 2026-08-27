@@ -18,8 +18,8 @@ export async function PUT(
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.nameAr !== undefined) updateData.nameAr = body.nameAr;
-    if (body.icon !== undefined) updateData.icon = body.icon;
-    if (body.color !== undefined) updateData.color = body.color;
+    if (body.logo !== undefined) updateData.logo = body.logo;
+    if (body.isCredit !== undefined) updateData.isCredit = Boolean(body.isCredit);
     if (body.active !== undefined) updateData.active = Boolean(body.active);
     if (body.sortOrder !== undefined) updateData.sortOrder = Number(body.sortOrder);
 

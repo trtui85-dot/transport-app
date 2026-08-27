@@ -103,6 +103,7 @@ model Branch {
   recvCargo  Cargo[] @relation("ReceiverBranch")
   expenses   Expense[]
   tickets    Ticket[]
+  paymentMethods BranchPaymentMethod[]
 }
 
 model Vehicle {
@@ -149,6 +150,8 @@ model Ticket {
   paymentMethodConfig    PaymentMethodConfig? @relation(fields: [paymentMethodConfigId], references: [id])
   amount                 Float
   status                 TicketStatus         @default(CONFIRMED)
+  paid                    Boolean              @default(true)
+  paidAt                  DateTime?
   branchId               String?
   branch                 Branch?              @relation(fields: [branchId], references: [id])
   issuedById             String?
@@ -161,12 +164,24 @@ model PaymentMethodConfig {
   id        String   @id @default(cuid())
   name      String
   nameAr    String
-  icon      String?
-  color     String?
+  logo      String?
+  isCredit  Boolean  @default(false)
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   tickets   Ticket[]
+  branches  BranchPaymentMethod[]
+}
+
+model BranchPaymentMethod {
+  id                     String               @id @default(cuid())
+  branchId               String
+  branch                 Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  paymentMethodConfigId  String
+  paymentMethodConfig    PaymentMethodConfig  @relation(fields: [paymentMethodConfigId], references: [id], onDelete: Cascade)
+  active                 Boolean              @default(true)
+
+  @@unique([branchId, paymentMethodConfigId])
 }
 
 model Cargo {

@@ -90,6 +90,17 @@ export async function POST(req: Request) {
     }
 
     const ticket = await prisma.$transaction(async (tx) => {
+      let config: { id: string; isCredit: boolean } | null = null;
+      if (paymentMethodConfigId) {
+        config = await tx.paymentMethodConfig.findUnique({
+          where: { id: paymentMethodConfigId },
+          select: { id: true, isCredit: true },
+        });
+        if (!config || !config.id) {
+          throw new Error("Invalid payment method");
+        }
+      }
+
       const newTicket = await tx.ticket.create({
         data: {
           tripId,
@@ -97,9 +108,11 @@ export async function POST(req: Request) {
           passengerName,
           passengerPhone,
           paymentMethod: paymentMethod || "CASH",
-          paymentMethodConfigId: paymentMethodConfigId || null,
+          paymentMethodConfigId: config ? config.id : null,
           amount: parseFloat(amount),
           status: "CONFIRMED",
+          paid: config ? !config.isCredit : true,
+          paidAt: config && !config.isCredit ? new Date() : null,
           branchId: session.branchId,
           issuedById: session.userId,
         },

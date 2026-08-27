@@ -45,6 +45,7 @@ export async function GET(req: Request) {
               where: {
                 branchId: branch.id,
                 status: "CONFIRMED",
+                paid: true,
                 issuedAt: { gte: fromDate, lte: toDate },
               },
               _sum: { amount: true },
@@ -93,6 +94,7 @@ export async function GET(req: Request) {
           by: ["paymentMethod"],
           where: {
             status: "CONFIRMED",
+            paid: true,
             issuedAt: { gte: fromDate, lte: toDate },
             ...(session.role !== "OWNER" && { branchId: session.branchId }),
           },

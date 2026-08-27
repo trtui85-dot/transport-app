@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Ticket as TicketIcon,
   Plus,
+  Wallet2,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import SeatMap from "@/components/seat-map";
@@ -48,8 +49,8 @@ interface PaymentMethod {
   id: string;
   name: string;
   nameAr: string;
-  icon: string;
-  color: string;
+  logo: string | null;
+  isCredit: boolean;
 }
 
 interface TicketIssued {
@@ -59,6 +60,7 @@ interface TicketIssued {
   passengerPhone: string;
   amount: number;
   paymentMethod: string;
+  paid?: boolean;
   paymentMethodConfig?: PaymentMethod | null;
   issuedAt: string;
   trip: Trip;
@@ -132,7 +134,9 @@ export default function TicketsPage() {
         const data = await res.json();
         const methods = data.methods || [];
         setPaymentMethods(methods);
-        if (methods.length > 0) setSelectedMethod(methods[0].id);
+        const defaultMethod =
+          methods.find((m: PaymentMethod) => !m.isCredit) || methods[0];
+        if (defaultMethod) setSelectedMethod(defaultMethod.id);
       }
     } catch (err) {
       console.error("Fetch payment methods error:", err);
@@ -231,14 +235,8 @@ export default function TicketsPage() {
             seatNumber: seat,
             passengerName: form.name.trim(),
             passengerPhone: form.phone.trim(),
-            paymentMethod:
-              selectedPaymentMethod && ["CASH", "DEBT", "WALLET"].includes(selectedPaymentMethod.id)
-                ? selectedPaymentMethod.id
-                : "CASH",
-            paymentMethodConfigId:
-              selectedPaymentMethod && !["CASH", "DEBT", "WALLET"].includes(selectedPaymentMethod.id)
-                ? selectedPaymentMethod.id
-                : null,
+            paymentMethod: "CASH",
+            paymentMethodConfigId: selectedPaymentMethod?.id || null,
             amount: selectedTrip.price,
           }),
         });
@@ -279,8 +277,7 @@ export default function TicketsPage() {
     return t(key);
   };
 
-  const paymentIcon = (tk: TicketIssued) =>
-    tk.paymentMethodConfig?.icon || (tk.paymentMethod === "WALLET" ? "📱" : tk.paymentMethod === "DEBT" ? "💳" : "💵");
+  const paymentLogoFor = (tk: TicketIssued) => tk.paymentMethodConfig?.logo || null;
 
   const formatTime = (dateStr: string) =>
     new Date(dateStr).toLocaleTimeString(lang === "ar" ? "ar-SA" : "fr-FR", {
@@ -420,7 +417,7 @@ export default function TicketsPage() {
                 {/* Amount + payment */}
                 <div className="mt-4 flex items-center justify-between bg-sand rounded-xl p-3.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{paymentIcon(tk)}</span>
+                    <MethodLogo method={tk.paymentMethodConfig} size={28} />
                     <span className="text-xs text-ink-faint">{paymentLabel(tk)}</span>
                   </div>
                   <div className="text-left">
@@ -430,6 +427,14 @@ export default function TicketsPage() {
                     </p>
                   </div>
                 </div>
+                {tk.paid === false && (
+                  <div className="mt-2 flex items-center gap-2 bg-warning/10 border border-warning/30 rounded-xl px-3 py-2">
+                    <Clock size={14} className="text-warning shrink-0" />
+                    <span className="text-xs font-semibold text-warning">
+                      {lang === "ar" ? "أجل - الدفع عند الوصول" : "Ajl - paiement à l'arrivée"}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Ticket actions */}
@@ -757,9 +762,9 @@ export default function TicketsPage() {
               {paymentMethods.length === 0 ? (
                 <div className="flex gap-3">
                   {([
-                    { id: "CASH", name: "Cash", nameAr: "نقدي", icon: "💵", color: "#16a34a" },
-                    { id: "DEBT", name: "Crédit", nameAr: "آجل", icon: "💳", color: "#f59e0b" },
-                    { id: "WALLET", name: "Portefeuille", nameAr: "محفظة", icon: "📱", color: "#146574" },
+                    { id: "CASH", name: "Cash", nameAr: "نقدي", logo: null, isCredit: false },
+                    { id: "AJL", name: "Ajl", nameAr: "أجل", logo: null, isCredit: true },
+                    { id: "WALLET", name: "Portefeuille", nameAr: "محفظة", logo: null, isCredit: false },
                   ] as PaymentMethod[]).map((m) => (
                     <PaymentButton
                       key={m.id}
@@ -845,9 +850,15 @@ export default function TicketsPage() {
                     <p className="text-sm font-semibold text-rope">
                       {tk.amount.toLocaleString()} {t("mr")}
                     </p>
-                    <p className="text-[10px] text-ink-faint">
-                      {paymentIcon(tk)} {paymentLabel(tk)}
-                    </p>
+                    <div className="flex items-center gap-2 text-[10px] text-ink/40">
+                    <MethodLogo method={tk.paymentMethodConfig} size={18} />
+                    <span>{paymentLabel(tk)}</span>
+                    {tk.paid === false && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">
+                        {lang === "ar" ? "أجل" : "Ajl"}
+                      </span>
+                    )}
+                  </div>
                   </div>
                 </div>
               );
@@ -856,6 +867,27 @@ export default function TicketsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function MethodLogo({ method, size = 28 }: { method?: PaymentMethod | null; size?: number }) {
+  if (method?.logo) {
+    return (
+      <img
+        src={method.logo}
+        alt=""
+        style={{ width: size, height: size }}
+        className="rounded-lg object-cover shrink-0"
+      />
+    );
+  }
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className="rounded-lg bg-sand-dim flex items-center justify-center shrink-0"
+    >
+      <Wallet2 size={size * 0.55} className="text-ink-faint" />
+    </span>
   );
 }
 
@@ -874,18 +906,19 @@ function PaymentButton({
   return (
     <button
       onClick={onSelect}
-      className={`shrink-0 min-w-[120px] lg:min-w-0 lg:w-full h-24 lg:h-24 rounded-xl border-2 flex flex-col items-center justify-center gap-2 px-3 transition-all active:scale-[0.97] ${
+      title={method.isCredit ? (lang === "ar" ? "آجل - الدفع عند الوصول" : "Ajl - paiement à l'arrivée") : undefined}
+      className={`shrink-0 min-w-[120px] lg:min-w-0 lg:w-full h-24 lg:h-24 rounded-xl border-2 flex flex-col items-center justify-center gap-2 px-3 transition-all active:scale-[0.97] relative ${
         selected
           ? "border-rope bg-rope-soft text-rope shadow-md"
           : "border-sand-dim bg-foam text-ink hover:border-rope/40"
       }`}
     >
-      <span className="text-3xl leading-none">{method.icon}</span>
+      <MethodLogo method={method} size={40} />
       <span className={`text-sm font-semibold text-center ${selected ? "text-rope" : "text-ink"}`}>
         {label}
       </span>
       {selected && (
-        <span className="w-5 h-5 rounded-full bg-rope text-white flex items-center justify-center">
+        <span className="absolute top-2 end-2 w-5 h-5 rounded-full bg-rope text-white flex items-center justify-center">
           <Check size={12} />
         </span>
       )}

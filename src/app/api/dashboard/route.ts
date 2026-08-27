@@ -32,6 +32,7 @@ export async function GET() {
             where: {
               branchId: branch.id,
               status: "CONFIRMED",
+              paid: true,
               issuedAt: { gte: todayStart, lte: todayEnd },
             },
             _sum: { amount: true },
@@ -140,6 +141,7 @@ export async function GET() {
       where: {
         branchId,
         status: "CONFIRMED",
+        paid: true,
         issuedAt: { gte: todayStart, lte: todayEnd },
       },
       _sum: { amount: true },

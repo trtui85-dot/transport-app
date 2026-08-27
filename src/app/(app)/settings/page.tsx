@@ -1,7 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Save, Building2, Tag, Globe, Moon, Sun, Plus, Pencil, Trash2, X, Wallet } from "lucide-react";
+import {
+  Save,
+  Building2,
+  Tag,
+  Globe,
+  Moon,
+  Sun,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Wallet,
+  Upload,
+} from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 interface ExpenseCategory {
@@ -13,8 +26,8 @@ interface PaymentMethod {
   id: string;
   name: string;
   nameAr: string;
-  icon: string | null;
-  color: string | null;
+  logo: string | null;
+  isCredit: boolean;
   active: boolean;
   sortOrder: number;
 }
@@ -44,8 +57,8 @@ export default function SettingsPage() {
   const [methodForm, setMethodForm] = useState({
     name: "",
     nameAr: "",
-    icon: "💰",
-    color: "#146574",
+    logo: "",
+    isCredit: false,
   });
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
   const [showMethodForm, setShowMethodForm] = useState(false);
@@ -93,7 +106,7 @@ export default function SettingsPage() {
 
   const fetchMethods = useCallback(async () => {
     try {
-      const res = await fetch("/api/payment-methods");
+      const res = await fetch("/api/payment-methods?all=1");
       if (res.ok) {
         const data = await res.json();
         setMethods(data.methods || []);
@@ -192,7 +205,7 @@ export default function SettingsPage() {
 
   const openAddMethod = () => {
     setEditingMethod(null);
-    setMethodForm({ name: "", nameAr: "", icon: "💰", color: "#146574" });
+    setMethodForm({ name: "", nameAr: "", logo: "", isCredit: false });
     setShowMethodForm(true);
   };
 
@@ -201,10 +214,25 @@ export default function SettingsPage() {
     setMethodForm({
       name: m.name,
       nameAr: m.nameAr,
-      icon: m.icon || "💰",
-      color: m.color || "#146574",
+      logo: m.logo || "",
+      isCredit: m.isCredit,
     });
     setShowMethodForm(true);
+  };
+
+  const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError(t("logoTooLarge"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMethodForm((prev) => ({ ...prev, logo: String(reader.result) }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleSaveMethod = async () => {
@@ -273,33 +301,33 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-ink/50 mb-1">{t("name")}</label>
+              <label className="block text-xs text-ink/50 mb-1.5">{t("name")}</label>
               <input
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 disabled={!isOwner}
-                className="w-full px-4 py-2.5 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
+                className="w-full h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-xs text-ink/50 mb-1">{t("address")}</label>
+              <label className="block text-xs text-ink/50 mb-1.5">{t("address")}</label>
               <input
                 type="text"
                 value={companyAddress}
                 onChange={(e) => setCompanyAddress(e.target.value)}
                 disabled={!isOwner}
-                className="w-full px-4 py-2.5 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
+                className="w-full h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-xs text-ink/50 mb-1">{t("phone2")}</label>
+              <label className="block text-xs text-ink/50 mb-1.5">{t("phone2")}</label>
               <input
                 type="tel"
                 value={companyPhone}
                 onChange={(e) => setCompanyPhone(e.target.value)}
                 disabled={!isOwner}
-                className="w-full px-4 py-2.5 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
+                className="w-full h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50 disabled:opacity-50"
                 dir="ltr"
               />
             </div>
@@ -318,7 +346,7 @@ export default function SettingsPage() {
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder={t("name")}
-              className="flex-1 px-4 py-2.5 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50"
+              className="flex-1 h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   editingCat ? handleUpdateCategory() : handleAddCategory();
@@ -327,7 +355,7 @@ export default function SettingsPage() {
             />
             <button
               onClick={editingCat ? handleUpdateCategory : handleAddCategory}
-              className="px-4 py-2.5 bg-rope text-white rounded-xl text-sm font-medium"
+              className="h-12 px-5 bg-rope text-white rounded-xl text-sm font-medium"
             >
               {editingCat ? t("save") : t("add")}
             </button>
@@ -381,15 +409,21 @@ export default function SettingsPage() {
                   className="flex items-center justify-between px-4 py-2.5 bg-sand rounded-xl"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: m.color || "#146574" }}
-                    >
-                      <span className="text-base">{m.icon || "💰"}</span>
-                    </span>
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-sand-dim flex items-center justify-center overflow-hidden">
+                      {m.logo ? (
+                        <img src={m.logo} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Wallet size={16} className="text-ink/40" />
+                      )}
+                    </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink truncate">
+                      <p className="text-sm font-medium text-ink truncate flex items-center gap-1.5">
                         {lang === "ar" && m.nameAr ? m.nameAr : m.name}
+                        {m.isCredit && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-semibold shrink-0">
+                            {lang === "ar" ? "أجل" : "Ajl"}
+                          </span>
+                        )}
                       </p>
                       {m.nameAr && m.nameAr !== m.name && lang === "fr" && (
                         <p className="text-[10px] text-ink/40 truncate">{m.nameAr}</p>
@@ -529,41 +563,63 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink/70 mb-1.5">{t("methodIcon")}</label>
+                <label className="block text-sm font-medium text-ink/70 mb-1.5">
+                  {t("logo")}
+                </label>
                 <div className="flex items-center gap-3">
-                  <span
-                    className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: methodForm.color }}
-                  >
-                    <span className="text-2xl">{methodForm.icon || "💰"}</span>
-                  </span>
-                  <input
-                    type="text"
-                    value={methodForm.icon}
-                    onChange={(e) => setMethodForm({ ...methodForm, icon: e.target.value })}
-                    placeholder="💲"
-                    className="flex-1 px-4 py-3 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50"
-                  />
+                  <div className="w-16 h-16 shrink-0 rounded-xl bg-sand border border-sand-dim overflow-hidden flex items-center justify-center">
+                    {methodForm.logo ? (
+                      <img
+                        src={methodForm.logo}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Wallet size={24} className="text-ink/40" />
+                    )}
+                  </div>
+                  <label className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl border-2 border-dashed border-sand-dim text-xs text-ink/50 cursor-pointer hover:border-rope transition-colors">
+                    <Upload size={18} className="mb-1" />
+                    {t("uploadLogo")}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoFile}
+                    />
+                  </label>
+                  {methodForm.logo && (
+                    <button
+                      onClick={() => setMethodForm({ ...methodForm, logo: "" })}
+                      className="p-2 text-red-400 hover:bg-red-50 rounded-xl shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-ink/70 mb-1.5">{t("methodColor")}</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={methodForm.color}
-                    onChange={(e) => setMethodForm({ ...methodForm, color: e.target.value })}
-                    className="w-12 h-12 rounded-xl border border-sand-dim bg-sand cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={methodForm.color}
-                    onChange={(e) => setMethodForm({ ...methodForm, color: e.target.value })}
-                    className="flex-1 px-4 py-3 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50"
-                    dir="ltr"
-                  />
+              <div className="flex items-center justify-between bg-sand rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">{t("payOnArrival")}</p>
+                  <p className="text-xs text-ink/40 mt-0.5">
+                    {t("payOnArrivalHint")}
+                  </p>
                 </div>
+                <button
+                  onClick={() =>
+                    setMethodForm({ ...methodForm, isCredit: !methodForm.isCredit })
+                  }
+                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
+                    methodForm.isCredit ? "bg-warning" : "bg-sand-dim"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                      methodForm.isCredit ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

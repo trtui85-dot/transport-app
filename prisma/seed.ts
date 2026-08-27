@@ -18,6 +18,7 @@ async function main() {
   await prisma.branch.deleteMany();
   await prisma.expenseCategory.deleteMany();
   await prisma.setting.deleteMany();
+  await prisma.branchPaymentMethod.deleteMany();
   await prisma.paymentMethodConfig.deleteMany();
 
   const pin = await bcrypt.hash("1234", 10);
@@ -76,11 +77,26 @@ async function main() {
   await prisma.salary.create({ data: { userId: agent1.id, month: "2026-08", base: 50000, commission: 600, total: 50600, status: "PAID", paidAt: new Date() } });
   await prisma.salary.create({ data: { userId: driver1.id, month: "2026-08", base: 80000, commission: 15000, total: 95000, status: "PENDING" } });
 
-  // Payment Methods
-  await prisma.paymentMethodConfig.create({ data: { name: "Cash", nameAr: "نقدي", icon: "💵", color: "#16a34a", sortOrder: 1 } });
-  await prisma.paymentMethodConfig.create({ data: { name: "Wallet", nameAr: "محفظة إلكترونية", icon: "📱", color: "#2563eb", sortOrder: 2 } });
-  await prisma.paymentMethodConfig.create({ data: { name: "Bank Transfer", nameAr: "تحويل بنكي", icon: "🏦", color: "#7c3aed", sortOrder: 3 } });
-  await prisma.paymentMethodConfig.create({ data: { name: "Check", nameAr: "شيك", icon: "📄", color: "#ea580c", sortOrder: 4 } });
+  // Payment Methods (logo = SVG data URL)
+  const svgLogo = (bg: string, fg: string, symbol: string) =>
+    `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'><rect width='96' height='96' rx='24' fill='${bg}'/><text x='48' y='62' font-size='44' text-anchor='middle' fill='${fg}'>${symbol}</text></svg>`
+    )}`;
+
+  const mCash = await prisma.paymentMethodConfig.create({ data: { name: "Cash", nameAr: "نقدي", logo: svgLogo("#16a34a", "#ffffff", "💵"), sortOrder: 1 } });
+  const mAjl = await prisma.paymentMethodConfig.create({ data: { name: "Ajl (pay on arrival)", nameAr: "أجل", logo: svgLogo("#f59e0b", "#ffffff", "🕓"), isCredit: true, sortOrder: 2 } });
+  const mWallet = await prisma.paymentMethodConfig.create({ data: { name: "Wallet", nameAr: "محفظة إلكترونية", logo: svgLogo("#2563eb", "#ffffff", "📱"), sortOrder: 3 } });
+  const mBank = await prisma.paymentMethodConfig.create({ data: { name: "Bank Transfer", nameAr: "تحويل بنكي", logo: svgLogo("#7c3aed", "#ffffff", "🏦"), sortOrder: 4 } });
+  const mCheck = await prisma.paymentMethodConfig.create({ data: { name: "Check", nameAr: "شيك", logo: svgLogo("#ea580c", "#ffffff", "📄"), sortOrder: 5 } });
+
+  // Assign all payment methods to each branch
+  for (const branch of [b1, b2, b3]) {
+    for (const method of [mCash, mAjl, mWallet, mBank, mCheck]) {
+      await prisma.branchPaymentMethod.create({
+        data: { branchId: branch.id, paymentMethodConfigId: method.id, active: true },
+      });
+    }
+  }
 
   // Settings
   await prisma.setting.create({ data: { key: "company_name", value: "شركة النقل البري" } });

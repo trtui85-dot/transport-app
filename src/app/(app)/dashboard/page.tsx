@@ -12,6 +12,12 @@ import {
   RefreshCw,
   Route,
   AlertCircle,
+  Search,
+  CircleDollarSign,
+  Hourglass,
+  Receipt,
+  X,
+  Check,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -38,6 +44,39 @@ interface DashboardData {
     totalExpenses: number;
     openDebts: number;
   };
+}
+
+interface BpMethod {
+  id: string;
+  name: string;
+  nameAr: string;
+  logo: string | null;
+  isCredit: boolean;
+  sortOrder: number;
+  balance: number;
+  txCount: number;
+}
+
+interface BpTicket {
+  id: string;
+  seatNumber: number;
+  passengerName: string;
+  passengerPhone: string;
+  amount: number;
+  issuedAt: string;
+  paidAt?: string | null;
+  trip: {
+    vehicle?: { plateNumber: string };
+    departureBranch: { name: string };
+    arrivalBranch: { name: string };
+  };
+  paymentMethodConfig?: BpMethod | null;
+}
+
+interface BranchPaymentsData {
+  methods: BpMethod[];
+  unpaid: BpTicket[];
+  transactions: BpTicket[];
 }
 
 function StatCard({
@@ -94,6 +133,25 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  const [bp, setBp] = useState<BranchPaymentsData | null>(null);
+  const [bpError, setBpError] = useState("");
+  const [search, setSearch] = useState("");
+  const [payingTicket, setPayingTicket] = useState<BpTicket | null>(null);
+  const [payMethod, setPayMethod] = useState("");
+  const [payConfirming, setPayConfirming] = useState(false);
+
+  const fetchBranchPayments = useCallback(async () => {
+    try {
+      setBpError("");
+      const res = await fetch("/api/branch-payments?limit=200");
+      if (res.ok) {
+        setBp(await res.json());
+      }
+    } catch {
+      setBpError(t("error"));
+    }
+  }, [t]);
+
   const fetchDashboard = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard");
@@ -101,19 +159,67 @@ export default function DashboardPage() {
         const json = await res.json();
         setData(json);
         setLastRefresh(new Date());
+        if (!json.branches) fetchBranchPayments();
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchBranchPayments]);
 
   useEffect(() => {
     fetchDashboard();
     const interval = setInterval(fetchDashboard, 30000);
     return () => clearInterval(interval);
   }, [fetchDashboard]);
+
+  const openPaySheet = (tk: BpTicket) => {
+    setPayingTicket(tk);
+    setPayMethod("");
+    setBpError("");
+  };
+
+  const handleCollectPayment = async () => {
+    if (!payingTicket || !payMethod) return;
+    setPayConfirming(true);
+    try {
+      const res = await fetch(`/api/tickets/${payingTicket.id}/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethodConfigId: payMethod }),
+      });
+      if (res.ok) {
+        setPayingTicket(null);
+        setPayMethod("");
+        await fetchBranchPayments();
+        await fetchDashboard();
+      } else {
+        const d = await res.json();
+        setBpError(d.error || t("error"));
+      }
+    } catch {
+      setBpError(t("error"));
+    } finally {
+      setPayConfirming(false);
+    }
+  };
+
+  const collectibleMethods = bp?.methods.filter((m) => !m.isCredit) || [];
+
+  const q = search.trim().toLowerCase();
+  const filteredTx = (bp?.transactions || []).filter((tx) => {
+    if (!q) return true;
+    return (
+      tx.passengerName.toLowerCase().includes(q) ||
+      tx.passengerPhone.includes(q) ||
+      (tx.paymentMethodConfig?.nameAr || "").toLowerCase().includes(q) ||
+      (tx.paymentMethodConfig?.name || "").toLowerCase().includes(q)
+    );
+  });
+
+  const routeLabel = (tk: BpTicket) =>
+    `${tk.trip.departureBranch.name} → ${tk.trip.arrivalBranch.name}`;
 
   if (loading) {
     return (
@@ -365,6 +471,227 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Branch manager: payment methods + operations */}
+      {!isOwner && (
+        <div className="space-y-4">
+          {/* Payment methods & balance */}
+          <div className="bg-foam rounded-2xl border border-sand-dim p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CircleDollarSign size={18} className="text-rope" />
+              <h2 className="text-sm font-semibold text-ink">{t("paymentMethods")}</h2>
+            </div>
+            {bp?.methods.length === 0 && !bpError ? (
+              <p className="text-xs text-ink/40 text-center py-4">{t("noResults")}</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {(bp?.methods || []).map((m) => (
+                  <div
+                    key={m.id}
+                    className={`rounded-xl border border-sand-dim p-3 ${
+                      m.isCredit ? "bg-warning/5" : "bg-sand"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      {m.logo ? (
+                        <img src={m.logo} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <span className="w-7 h-7 rounded-lg bg-sand-dim flex items-center justify-center text-[10px]">
+                          {m.isCredit ? "A" : "P"}
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-ink truncate">
+                        {lang === "ar" && m.nameAr ? m.nameAr : m.name}
+                      </span>
+                    </div>
+                    <p className="text-base font-bold text-ink">{formatCurrency(m.balance)}</p>
+                    <p className="text-[10px] text-ink/40">{m.txCount} {t("transactions")}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Unpaid (Ajl) tickets */}
+          {bp && bp.unpaid.length > 0 && (
+            <div className="bg-foam rounded-2xl border border-warning/40 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Hourglass size={18} className="text-warning" />
+                <h2 className="text-sm font-semibold text-ink">{t("pendingPayments")}</h2>
+                <span className="ms-auto px-2 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-semibold">
+                  {bp.unpaid.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {bp.unpaid.map((tk) => (
+                  <div
+                    key={tk.id}
+                    className="flex items-center justify-between gap-3 bg-sand rounded-xl px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink truncate">{tk.passengerName}</p>
+                      <p className="text-[10px] text-ink/40 truncate">
+                        {t("seat")} {tk.seatNumber} · {routeLabel(tk)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-bold text-rope">+{formatCurrency(tk.amount)}</span>
+                      <button
+                        onClick={() => openPaySheet(tk)}
+                        className="flex items-center gap-1 bg-rope text-white text-xs font-medium px-3 py-2 rounded-lg active:scale-95 transition-transform"
+                      >
+                        <Check size={14} />
+                        {t("pay")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Operations / transactions */}
+          <div className="bg-foam rounded-2xl border border-sand-dim p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Receipt size={18} className="text-rope" />
+              <h2 className="text-sm font-semibold text-ink">{t("transactions")}</h2>
+            </div>
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+              <input
+                type="text"
+                placeholder={t("search")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-11 pl-9 pr-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink placeholder:text-ink/40 outline-none focus:border-rope/50"
+              />
+            </div>
+            {!bp ? (
+              <div className="text-center py-8">
+                <RefreshCw size={20} className="animate-spin text-rope mx-auto" />
+              </div>
+            ) : filteredTx.length === 0 ? (
+              <p className="text-xs text-ink/40 text-center py-6">{t("noResults")}</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+                {filteredTx.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between gap-3 bg-sand rounded-xl px-3 py-2.5"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-8 h-8 rounded-lg bg-rope/10 flex items-center justify-center text-xs font-bold text-rope shrink-0">
+                        {tx.seatNumber}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{tx.passengerName}</p>
+                        <p className="text-[10px] text-ink/40 truncate">{routeLabel(tx)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="w-6 h-6">{tx.paymentMethodConfig?.logo && (
+                        <img src={tx.paymentMethodConfig.logo} alt="" className="w-full h-full rounded object-cover" />
+                      )}</span>
+                      <span className="text-sm font-bold text-ink">{formatCurrency(tx.amount)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+    {/* Pay sheet */}
+    {payingTicket && (
+      <div className="fixed inset-0 z-50">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setPayingTicket(null)} />
+        <div className="absolute bottom-0 left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-ink">{t("pay")}</h2>
+            <button onClick={() => setPayingTicket(null)} className="p-2 hover:bg-sand rounded-xl">
+              <X size={20} className="text-ink/40" />
+            </button>
+          </div>
+
+          {bpError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+              {bpError}
+            </div>
+          )}
+
+          <div className="bg-sand rounded-2xl p-4 mb-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink/40">{t("passengerName")}</span>
+              <span className="text-sm font-semibold text-ink">{payingTicket.passengerName}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink/40">{t("seat")}</span>
+              <span className="text-sm font-semibold text-ink">{payingTicket.seatNumber}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-ink/40">{t("trips")}</span>
+              <span className="text-sm font-semibold text-ink">{routeLabel(payingTicket)}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-sand-dim pt-2">
+              <span className="text-xs text-ink/40">{t("price")}</span>
+              <span className="text-lg font-bold text-rope">{formatCurrency(payingTicket.amount)}</span>
+            </div>
+          </div>
+
+          <p className="text-sm font-medium text-ink/70 mb-2">{t("choosePayMethod")}</p>
+          {collectibleMethods.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {collectibleMethods.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setPayMethod(m.id)}
+                  className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 h-20 px-2 transition-all active:scale-95 ${
+                    payMethod === m.id
+                      ? "border-rope bg-rope-soft"
+                      : "border-sand-dim bg-sand"
+                  }`}
+                >
+                  {m.logo ? (
+                    <img src={m.logo} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                  ) : (
+                    <Wallet size={18} className="text-ink/40" />
+                  )}
+                  <span className="text-[11px] font-medium text-ink truncate max-w-full">
+                    {lang === "ar" && m.nameAr ? m.nameAr : m.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-ink/40 text-center py-4">{t("noResults")}</p>
+          )}
+
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={() => setPayingTicket(null)}
+              className="flex-1 h-12 border border-sand-dim rounded-xl text-sm text-ink/60 font-medium"
+            >
+              {t("cancel")}
+            </button>
+            <button
+              onClick={handleCollectPayment}
+              disabled={!payMethod || payConfirming}
+              className="flex-1 h-12 bg-rope text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {payConfirming ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Check size={16} />
+                  {t("confirmPay")}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

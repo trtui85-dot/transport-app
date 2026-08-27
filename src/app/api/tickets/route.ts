@@ -26,6 +26,7 @@ export async function GET() {
         },
         branch: true,
         issuedBy: { select: { id: true, name: true } },
+        paymentMethodConfig: true,
       },
       orderBy: { issuedAt: "desc" },
     });
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { tripId, seatNumber, passengerName, passengerPhone, paymentMethod, amount } =
+    const { tripId, seatNumber, passengerName, passengerPhone, paymentMethod, paymentMethodConfigId, amount } =
       await req.json();
 
     if (!tripId || !seatNumber || !passengerName || !passengerPhone || amount === undefined) {
@@ -96,10 +97,14 @@ export async function POST(req: Request) {
           passengerName,
           passengerPhone,
           paymentMethod: paymentMethod || "CASH",
+          paymentMethodConfigId: paymentMethodConfigId || null,
           amount: parseFloat(amount),
           status: "CONFIRMED",
           branchId: session.branchId,
           issuedById: session.userId,
+        },
+        include: {
+          paymentMethodConfig: true,
         },
       });
 

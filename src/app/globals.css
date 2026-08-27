@@ -18,6 +18,14 @@
   --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
 }
 
+.dark {
+  --color-sand: #0b1220;
+  --color-sand-dim: #1a2332;
+  --color-ink: #e5e7eb;
+  --color-ink-faint: #9ca3af;
+  --color-foam: #111827;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -58,5 +66,25 @@ textarea:focus {
 
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-ticket,
+  .print-ticket * {
+    visibility: visible;
+  }
+  .print-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+  }
+  .print-area {
+    display: block !important;
   }
 }

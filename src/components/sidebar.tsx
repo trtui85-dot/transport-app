@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Ticket,
@@ -15,6 +16,12 @@ import {
   Settings,
   Globe,
   LogOut,
+  Moon,
+  Sun,
+  Navigation,
+  Lock,
+  Bell,
+  CircleUser,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -39,22 +46,44 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard, roles: ["OWNER", "BRANCH_MANAGER", "TICKET_AGENT", "CARGO_AGENT", "DRIVER", "ACCOUNTANT"] },
-  { href: "/tickets", label: "nav.tickets", icon: Ticket, roles: ["OWNER", "BRANCH_MANAGER", "TICKET_AGENT"] },
-  { href: "/cargo", label: "nav.cargo", icon: Package, roles: ["OWNER", "BRANCH_MANAGER", "CARGO_AGENT"] },
-  { href: "/branches", label: "nav.branches", icon: Building2, roles: ["OWNER"] },
-  { href: "/vehicles", label: "nav.vehicles", icon: Car, roles: ["OWNER", "BRANCH_MANAGER"] },
-  { href: "/trips", label: "nav.trips", icon: Route, roles: ["OWNER", "BRANCH_MANAGER", "DRIVER"] },
-  { href: "/expenses", label: "nav.expenses", icon: Wallet, roles: ["OWNER", "BRANCH_MANAGER"] },
-  { href: "/debts", label: "nav.debts", icon: AlertCircle, roles: ["OWNER", "BRANCH_MANAGER"] },
-  { href: "/salaries", label: "nav.salaries", icon: Users, roles: ["OWNER"] },
-  { href: "/reports", label: "nav.reports", icon: BarChart3, roles: ["OWNER", "BRANCH_MANAGER"] },
-  { href: "/settings", label: "nav.settings", icon: Settings, roles: ["OWNER", "BRANCH_MANAGER"] },
-  { href: "/users", label: "nav.users", icon: Users, roles: ["OWNER"] },
+  { href: "/dashboard", label: "dashboard", icon: LayoutDashboard, roles: ["OWNER", "BRANCH_MANAGER", "TICKET_AGENT", "CARGO_AGENT", "DRIVER", "ACCOUNTANT"] },
+  { href: "/tickets", label: "tickets", icon: Ticket, roles: ["OWNER", "BRANCH_MANAGER", "TICKET_AGENT"] },
+  { href: "/cargo", label: "cargo", icon: Package, roles: ["OWNER", "BRANCH_MANAGER", "CARGO_AGENT"] },
+  { href: "/fleet", label: "fleet", icon: Navigation, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/closing", label: "closing", icon: Lock, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/alerts", label: "alerts", icon: Bell, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/branches", label: "branches", icon: Building2, roles: ["OWNER"] },
+  { href: "/vehicles", label: "vehicles", icon: Car, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/trips", label: "trips", icon: Route, roles: ["OWNER", "BRANCH_MANAGER", "DRIVER"] },
+  { href: "/driver", label: "myTrips", icon: CircleUser, roles: ["DRIVER"] },
+  { href: "/expenses", label: "expenses", icon: Wallet, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/debts", label: "debts", icon: AlertCircle, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/salaries", label: "salaries", icon: Users, roles: ["OWNER"] },
+  { href: "/reports", label: "reports", icon: BarChart3, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/settings", label: "settings", icon: Settings, roles: ["OWNER", "BRANCH_MANAGER"] },
+  { href: "/users", label: "users", icon: Users, roles: ["OWNER"] },
 ];
 
 export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
   const { t, lang, setLang } = useLanguage();
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("transport:theme");
+    if (stored === "dark") {
+      setDark(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("transport:theme", dark ? "dark" : "light");
+  }, [dark]);
 
   const visibleItems = navItems.filter((item) =>
     item.roles.includes(user.role)
@@ -70,7 +99,7 @@ export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
       className="fixed top-0 right-0 h-screen w-60 bg-ink text-sand rounded-2xl m-2 flex flex-col z-40 overflow-hidden"
     >
       <div className="px-5 py-6 border-b border-sand/10">
-        <h1 className="text-lg font-bold tracking-tight">{t("app.name")}</h1>
+        <h1 className="text-lg font-bold tracking-tight">{t("appName")}</h1>
         <p className="text-xs text-sand/50 mt-0.5">{user.role.replace("_", " ")}</p>
       </div>
 
@@ -97,6 +126,13 @@ export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
 
       <div className="px-3 py-3 border-t border-sand/10">
         <button
+          onClick={() => setDark(!dark)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sand/70 hover:bg-sand/10 hover:text-sand w-full transition-colors"
+        >
+          {dark ? <Sun size={18} /> : <Moon size={18} />}
+          <span>{t(dark ? "lightMode" : "darkMode")}</span>
+        </button>
+        <button
           onClick={handleLanguageToggle}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sand/70 hover:bg-sand/10 hover:text-sand w-full transition-colors"
         >
@@ -108,7 +144,7 @@ export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sand/70 hover:bg-red-500/20 hover:text-red-400 w-full transition-colors"
         >
           <LogOut size={18} />
-          <span>{t("nav.logout")}</span>
+          <span>{t("logout")}</span>
         </button>
       </div>
     </aside>

@@ -9,10 +9,10 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/tickets", label: "nav.tickets", icon: Ticket },
-  { href: "/cargo", label: "nav.cargo", icon: Package },
-  { href: "/more", label: "nav.more", icon: Menu },
+  { href: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+  { href: "/tickets", label: "tickets", icon: Ticket },
+  { href: "/cargo", label: "cargo", icon: Package },
+  { href: "/more", label: "more", icon: Menu },
 ];
 
 export default function BottomNav({ currentPath }: BottomNavProps) {

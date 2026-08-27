@@ -138,21 +138,35 @@ model Trip {
 }
 
 model Ticket {
-  id              String        @id @default(cuid())
-  tripId          String
-  trip            Trip          @relation(fields: [tripId], references: [id])
-  seatNumber      Int
-  passengerName   String
-  passengerPhone  String
-  paymentMethod   PaymentMethod @default(CASH)
-  amount          Float
-  status          TicketStatus  @default(CONFIRMED)
-  branchId        String?
-  branch          Branch?       @relation(fields: [branchId], references: [id])
-  issuedById      String?
-  issuedBy        User?         @relation(fields: [issuedById], references: [id])
-  issuedAt        DateTime      @default(now())
-  notes           String?
+  id                     String               @id @default(cuid())
+  tripId                 String
+  trip                   Trip                 @relation(fields: [tripId], references: [id])
+  seatNumber             Int
+  passengerName          String
+  passengerPhone         String
+  paymentMethod          PaymentMethod        @default(CASH)
+  paymentMethodConfigId  String?
+  paymentMethodConfig    PaymentMethodConfig? @relation(fields: [paymentMethodConfigId], references: [id])
+  amount                 Float
+  status                 TicketStatus         @default(CONFIRMED)
+  branchId               String?
+  branch                 Branch?              @relation(fields: [branchId], references: [id])
+  issuedById             String?
+  issuedBy               User?                @relation(fields: [issuedById], references: [id])
+  issuedAt               DateTime             @default(now())
+  notes                  String?
+}
+
+model PaymentMethodConfig {
+  id        String   @id @default(cuid())
+  name      String
+  nameAr    String
+  icon      String?
+  color     String?
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  tickets   Ticket[]
 }
 
 model Cargo {

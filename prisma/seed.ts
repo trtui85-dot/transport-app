@@ -4,6 +4,22 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Clean existing data
+  await prisma.auditLog.deleteMany();
+  await prisma.salary.deleteMany();
+  await prisma.debtPayment.deleteMany();
+  await prisma.debt.deleteMany();
+  await prisma.expense.deleteMany();
+  await prisma.ticket.deleteMany();
+  await prisma.cargo.deleteMany();
+  await prisma.trip.deleteMany();
+  await prisma.vehicle.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.branch.deleteMany();
+  await prisma.expenseCategory.deleteMany();
+  await prisma.setting.deleteMany();
+  await prisma.paymentMethodConfig.deleteMany();
+
   const pin = await bcrypt.hash("1234", 10);
   // Branches
   const b1 = await prisma.branch.create({ data: { name: "الفرع الرئيسي", city: "نواكشوط", address: "شارع المرسلات", phone: "43227748" } });
@@ -59,6 +75,12 @@ async function main() {
   // Salaries
   await prisma.salary.create({ data: { userId: agent1.id, month: "2026-08", base: 50000, commission: 600, total: 50600, status: "PAID", paidAt: new Date() } });
   await prisma.salary.create({ data: { userId: driver1.id, month: "2026-08", base: 80000, commission: 15000, total: 95000, status: "PENDING" } });
+
+  // Payment Methods
+  await prisma.paymentMethodConfig.create({ data: { name: "Cash", nameAr: "نقدي", icon: "💵", color: "#16a34a", sortOrder: 1 } });
+  await prisma.paymentMethodConfig.create({ data: { name: "Wallet", nameAr: "محفظة إلكترونية", icon: "📱", color: "#2563eb", sortOrder: 2 } });
+  await prisma.paymentMethodConfig.create({ data: { name: "Bank Transfer", nameAr: "تحويل بنكي", icon: "🏦", color: "#7c3aed", sortOrder: 3 } });
+  await prisma.paymentMethodConfig.create({ data: { name: "Check", nameAr: "شيك", icon: "📄", color: "#ea580c", sortOrder: 4 } });
 
   // Settings
   await prisma.setting.create({ data: { key: "company_name", value: "شركة النقل البري" } });

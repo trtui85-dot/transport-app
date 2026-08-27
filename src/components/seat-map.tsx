@@ -1,40 +1,36 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 interface SeatMapProps {
   totalSeats: number;
   occupiedSeats: number[];
-  selectedSeat: number | null;
+  selectedSeats: number[];
   onSelect: (seat: number) => void;
 }
 
 export default function SeatMap({
   totalSeats,
   occupiedSeats,
-  selectedSeat,
+  selectedSeats,
   onSelect,
 }: SeatMapProps) {
+  const { lang } = useLanguage();
   const cols = 4;
   const rows = Math.ceil(totalSeats / cols);
 
-  const getSeatStatus = (seatNum: number): "available" | "occupied" | "selected" | "last" => {
+  const getSeatStatus = (seatNum: number): "available" | "occupied" | "selected" => {
     if (occupiedSeats.includes(seatNum)) return "occupied";
-    if (selectedSeat === seatNum) return "selected";
-    const availableCount = totalSeats - occupiedSeats.length;
-    if (availableCount === 1) return "last";
+    if (selectedSeats.includes(seatNum)) return "selected";
     return "available";
   };
 
   const statusStyles: Record<string, string> = {
     available:
       "bg-green-100 border-green-300 text-green-700 hover:bg-green-200 cursor-pointer",
-    occupied:
-      "bg-ink/10 border-ink/15 text-ink/30 cursor-not-allowed",
-    selected:
-      "bg-rope border-rope text-white cursor-pointer",
-    last:
-      "bg-red-100 border-red-300 text-red-600 hover:bg-red-200 cursor-pointer",
+    occupied: "bg-ink/10 border-ink/15 text-ink/30 cursor-not-allowed",
+    selected: "bg-blue-600 border-blue-600 text-white cursor-pointer",
   };
 
   const seatNumbers: (number | null)[] = [];
@@ -70,11 +66,7 @@ export default function SeatMap({
                         className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg border text-xs font-semibold flex items-center justify-center transition-all ${statusStyles[status]}`}
                         aria-label={`Seat ${seatNum}`}
                       >
-                        {status === "selected" ? (
-                          <Check size={16} />
-                        ) : (
-                          seatNum
-                        )}
+                        {status === "selected" ? <Check size={16} /> : seatNum}
                       </button>
                     );
                   })}
@@ -97,11 +89,7 @@ export default function SeatMap({
                         className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg border text-xs font-semibold flex items-center justify-center transition-all ${statusStyles[status]}`}
                         aria-label={`Seat ${seatNum}`}
                       >
-                        {status === "selected" ? (
-                          <Check size={16} />
-                        ) : (
-                          seatNum
-                        )}
+                        {status === "selected" ? <Check size={16} /> : seatNum}
                       </button>
                     );
                   })}
@@ -115,15 +103,15 @@ export default function SeatMap({
       <div className="flex items-center justify-center gap-4 mt-5 text-xs text-ink/50">
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded bg-green-200 border border-green-300" />
-          <span>Available</span>
+          <span>{lang === "ar" ? "متاح" : "Disponible"}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded bg-ink/10 border border-ink/15" />
-          <span>Occupied</span>
+          <span>{lang === "ar" ? "محجوز" : "Occupé"}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3.5 h-3.5 rounded bg-rope border border-rope" />
-          <span>Selected</span>
+          <div className="w-3.5 h-3.5 rounded bg-blue-600 border border-blue-600" />
+          <span>{lang === "ar" ? "محدد" : "Sélectionné"}</span>
         </div>
       </div>
     </div>

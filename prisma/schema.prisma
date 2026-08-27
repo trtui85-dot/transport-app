@@ -44,6 +44,12 @@ enum TicketStatus {
   COMPLETED
 }
 
+enum CancelReason {
+  TEST
+  PASSENGER_DISSATISFIED
+  OTHER
+}
+
 enum CargoStatus {
   PENDING
   IN_TRANSIT
@@ -150,6 +156,7 @@ model Ticket {
   paymentMethodConfig    PaymentMethodConfig? @relation(fields: [paymentMethodConfigId], references: [id])
   amount                 Float
   status                 TicketStatus         @default(CONFIRMED)
+  cancelReason           CancelReason?
   paid                    Boolean              @default(true)
   paidAt                  DateTime?
   branchId               String?

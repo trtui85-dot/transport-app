@@ -16,6 +16,8 @@ import {
   Ticket as TicketIcon,
   Plus,
   Wallet2,
+  X,
+  Ban,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import SeatMap from "@/components/seat-map";
@@ -61,6 +63,8 @@ interface TicketIssued {
   amount: number;
   paymentMethod: string;
   paid?: boolean;
+  status?: string;
+  cancelReason?: string | null;
   paymentMethodConfig?: PaymentMethod | null;
   issuedAt: string;
   trip: Trip;
@@ -88,6 +92,21 @@ export default function TicketsPage() {
   const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  const [printMode, setPrintMode] = useState<"thermal" | "a5" | null>(null);
+  const [cancellingTicket, setCancellingTicket] = useState<TicketIssued | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState("");
+  const [cancelConfirming, setCancelConfirming] = useState(false);
+
+  useEffect(() => {
+    const clearPrint = () => {
+      const styleEl = document.getElementById("print-page-style");
+      if (styleEl) styleEl.remove();
+      setPrintMode(null);
+    };
+    window.addEventListener("afterprint", clearPrint);
+    return () => window.removeEventListener("afterprint", clearPrint);
+  }, []);
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -292,8 +311,53 @@ export default function TicketsPage() {
       year: "numeric",
     });
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (mode: "thermal" | "a5") => {
+    const prev = document.getElementById("print-page-style");
+    if (prev) prev.remove();
+    const styleEl = document.createElement("style");
+    styleEl.id = "print-page-style";
+    styleEl.textContent =
+      mode === "thermal"
+        ? "@page { size: 105mm 148mm; margin: 0; }"
+        : "@page { size: A5; margin: 0; }";
+    document.head.appendChild(styleEl);
+    setPrintMode(mode);
+    setTimeout(() => window.print(), 50);
+  };
+
+  const openCancel = (tk: TicketIssued) => {
+    setCancellingTicket(tk);
+    setCancelReason("");
+    setCancelError("");
+  };
+
+  const handleCancelTicket = async () => {
+    if (!cancellingTicket || !cancelReason || cancelConfirming) return;
+    setCancelConfirming(true);
+    try {
+      const res = await fetch(`/api/tickets/${cancellingTicket.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason }),
+      });
+      if (res.ok) {
+        setCancellingTicket(null);
+        setCancelReason("");
+        fetchRecentTickets();
+      } else {
+        const data = await res.json();
+        setCancelError(data.error || t("error"));
+      }
+    } catch {
+      setCancelError(t("error"));
+    }
+    setCancelConfirming(false);
+  };
+
+  const cancelReasonLabel = (r?: string | null) => {
+    if (r === "TEST") return lang === "ar" ? "تجربة" : "Test";
+    if (r === "PASSENGER_DISSATISFIED") return lang === "ar" ? "الراكب لم يعجبه الوضع" : "Client insatisfait";
+    return lang === "ar" ? "أخرى" : "Autre";
   };
 
   const handleWhatsApp = (tk: TicketIssued) => {
@@ -346,8 +410,64 @@ export default function TicketsPage() {
           {issuedTickets.map((tk) => (
             <article
               key={tk.id}
-              className="print-ticket bg-foam rounded-2xl border-2 border-dashed border-rope/60 overflow-hidden"
+              className={`print-ticket bg-foam rounded-2xl border-2 border-dashed border-rope/60 overflow-hidden ${
+                printMode === "thermal" ? "print-thermal" : "print-a5"
+              }`}
             >
+              {printMode === "thermal" ? (
+                <div className="bg-white text-black">
+                  <div
+                    className="px-4 py-4"
+                    style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
+                  >
+                    <div className="flex items-center justify-between border-b-2 border-black pb-2 mb-2">
+                      <span className="text-[10px] font-bold tracking-wide">
+                        {lang === "ar" ? "شركة النقل" : "Transport Co."}
+                      </span>
+                      <span className="text-[10px] font-bold">{t("tickets")} #{tk.seatNumber}</span>
+                    </div>
+                    <div className="text-center font-bold text-[11px] leading-snug">
+                      {tk.trip.departureBranch.name} → {tk.trip.arrivalBranch.name}
+                    </div>
+                    <div className="text-center text-[9px] text-gray-700 mb-2">
+                      {formatDate(tk.trip.departureTime)} · {formatTime(tk.trip.departureTime)}
+                    </div>
+                    <div className="text-center border-y border-dashed border-gray-500 py-3 my-2">
+                      <div className="text-[8px] uppercase text-gray-600 mb-1">{t("seat")}</div>
+                      <div className="text-6xl font-black tracking-widest">{tk.seatNumber}</div>
+                    </div>
+                    <div className="space-y-1.5 text-[10px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">{t("passengerName")}</span>
+                        <span className="font-bold">{tk.passengerName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">{t("passengerPhone")}</span>
+                        <span className="font-bold" dir="ltr">{tk.passengerPhone}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">{t("paymentMethod")}</span>
+                        <span className="font-bold">{paymentLabel(tk)}</span>
+                      </div>
+                      {tk.paid === false && (
+                        <div className="font-bold text-center">
+                          {lang === "ar" ? "أجل - الدفع عند الوصول" : "Ajl - paiement à l'arrivée"}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between border-t-2 border-black pt-2 mt-2 text-[11px]">
+                      <span className="font-bold">{t("price")}</span>
+                      <span className="font-black text-base">
+                        {tk.amount.toLocaleString()} {t("mr")}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-center text-[8px] text-gray-600 border-t border-dashed border-gray-400 pt-2">
+                      {lang === "ar" ? "شكرًا لسفركم معنا. تذكرة سارية ليوم واحد فقط." : "Merci de voyager avec nous."}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Ticket head */}
               <div className="bg-rope px-5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -436,19 +556,30 @@ export default function TicketsPage() {
                   </div>
                 )}
               </div>
+                </>
+              )}
 
               {/* Ticket actions */}
-              <div className="px-5 pb-5 flex gap-3 no-print">
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 h-12 rounded-xl bg-sand border border-sand-dim text-ink text-sm font-medium flex items-center justify-center gap-2 hover:bg-sand-dim transition-colors active:scale-[0.98]"
-                >
-                  <Printer size={18} />
-                  {lang === "ar" ? "طباعة" : "Imprimer"}
-                </button>
+              <div className="px-5 pb-5 space-y-2 no-print">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handlePrint("thermal")}
+                    className="flex-1 h-12 rounded-xl bg-ink text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all"
+                  >
+                    <Printer size={18} />
+                    {lang === "ar" ? "طباعة حرارية A6" : "Thermique A6"}
+                  </button>
+                  <button
+                    onClick={() => handlePrint("a5")}
+                    className="flex-1 h-12 rounded-xl bg-sand border border-sand-dim text-ink text-sm font-medium flex items-center justify-center gap-2 hover:bg-sand-dim transition-colors active:scale-[0.98]"
+                  >
+                    <Printer size={18} />
+                    {lang === "ar" ? "طباعة عادية A5" : "Standard A5"}
+                  </button>
+                </div>
                 <button
                   onClick={() => handleWhatsApp(tk)}
-                  className="flex-1 h-12 rounded-xl bg-success text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all"
+                  className="w-full h-12 rounded-xl bg-success text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all"
                 >
                   <MessageCircle size={18} />
                   WhatsApp
@@ -832,37 +963,146 @@ export default function TicketsPage() {
           <div className="space-y-2">
             {recentTickets.map((tk) => {
               const time = formatTime(tk.issuedAt);
+              const cancelled = tk.status === "CANCELLED";
               return (
                 <div
                   key={tk.id}
-                  className="bg-foam rounded-xl border border-sand-dim p-3 flex items-center justify-between"
+                  className={`bg-foam rounded-xl border p-3 flex items-center justify-between ${
+                    cancelled ? "border-danger/30 opacity-70" : "border-sand-dim"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-rope/10 flex items-center justify-center">
-                      <span className="text-sm font-bold text-rope">{tk.seatNumber}</span>
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        cancelled ? "bg-danger/10" : "bg-rope/10"
+                      }`}
+                    >
+                      <span
+                        className={`text-sm font-bold ${cancelled ? "text-danger line-through" : "text-rope"}`}
+                      >
+                        {tk.seatNumber}
+                      </span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-ink">{tk.passengerName}</p>
                       <p className="text-[10px] text-ink-faint">{time}</p>
+                      {cancelled && tk.cancelReason && (
+                        <p className="text-[10px] text-danger font-medium">
+                          {lang === "ar" ? "ملغاة" : "Annulé"} · {cancelReasonLabel(tk.cancelReason)}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-rope">
-                      {tk.amount.toLocaleString()} {t("mr")}
-                    </p>
-                    <div className="flex items-center gap-2 text-[10px] text-ink/40">
-                    <MethodLogo method={tk.paymentMethodConfig} size={18} />
-                    <span>{paymentLabel(tk)}</span>
-                    {tk.paid === false && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">
-                        {lang === "ar" ? "أجل" : "Ajl"}
-                      </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-left">
+                      <p
+                        className={`text-sm font-semibold ${cancelled ? "text-ink/40 line-through" : "text-rope"}`}
+                      >
+                        {tk.amount.toLocaleString()} {t("mr")}
+                      </p>
+                      <div className="flex items-center gap-2 text-[10px] text-ink/40">
+                        <MethodLogo method={tk.paymentMethodConfig} size={18} />
+                        <span>{paymentLabel(tk)}</span>
+                        {tk.paid === false && !cancelled && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">
+                            {lang === "ar" ? "أجل" : "Ajl"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {!cancelled && (
+                      <button
+                        onClick={() => openCancel(tk)}
+                        title={t("cancelTicket")}
+                        className="w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center active:scale-95 transition-transform hover:bg-danger/15 shrink-0"
+                      >
+                        <Ban size={15} />
+                      </button>
                     )}
-                  </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel reason sheet */}
+      {cancellingTicket && (
+        <div className="fixed inset-0 z-[90]">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setCancellingTicket(null)}
+          />
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:max-h-[90vh]">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-bold text-ink">{t("cancelTicket")}</h2>
+              <button onClick={() => setCancellingTicket(null)} className="p-2 hover:bg-sand rounded-xl">
+                <X size={20} className="text-ink/40" />
+              </button>
+            </div>
+            <p className="text-xs text-ink/40 mb-4">
+              {t("seat")} {cancellingTicket.seatNumber} · {cancellingTicket.passengerName}
+            </p>
+
+            {cancelError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                {cancelError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {[
+                { value: "TEST", ar: "تجربة", fr: "Test" },
+                { value: "PASSENGER_DISSATISFIED", ar: "الراكب لم يعجبه الوضع", fr: "Client insatisfait" },
+                { value: "OTHER", ar: "أخرى", fr: "Autre" },
+              ].map((reason) => {
+                const checked = cancelReason === reason.value;
+                return (
+                  <button
+                    key={reason.value}
+                    onClick={() => setCancelReason(reason.value)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-start transition-all ${
+                      checked ? "border-danger bg-danger/5" : "border-sand-dim bg-sand"
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-ink">
+                      {lang === "ar" ? reason.ar : reason.fr}
+                    </span>
+                    <span
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        checked ? "bg-danger border-danger" : "border-sand-dim"
+                      }`}
+                    >
+                      {checked && <Check size={14} className="text-white" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setCancellingTicket(null)}
+                className="flex-1 h-12 border border-sand-dim rounded-xl text-sm text-ink/60 font-medium"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={handleCancelTicket}
+                disabled={!cancelReason || cancelConfirming}
+                className="flex-1 h-12 bg-danger text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {cancelConfirming ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    <Ban size={16} />
+                    {lang === "ar" ? "تأكيد الإلغاء" : "Confirmer l'annulation"}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

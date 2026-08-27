@@ -92,6 +92,13 @@ textarea:focus {
     top: 0;
     width: 100%;
     box-shadow: none !important;
+    border-radius: 0 !important;
+    break-after: page;
+  }
+  .print-ticket.print-thermal {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
   }
   .print-area {
     display: block !important;

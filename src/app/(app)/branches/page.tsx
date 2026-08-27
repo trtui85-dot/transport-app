@@ -315,9 +315,9 @@ export default function BranchesPage() {
       </div>
 
       {showSheet && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[90]">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowSheet(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-ink">
                 {editingBranch ? t("edit") : t("add")} {t("branches")}
@@ -392,9 +392,9 @@ export default function BranchesPage() {
       )}
 
       {assigningBranch && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[90]">
           <div className="absolute inset-0 bg-black/40" onClick={() => setAssigningBranch(null)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:max-h-[90vh]">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-lg font-bold text-ink">
                 {t("paymentMethods")} - {assigningBranch.name}

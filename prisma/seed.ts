@@ -5,15 +5,13 @@ const prisma = new PrismaClient();
 
 async function main() {
   const pin = await bcrypt.hash("1234", 10);
-  const adminPin = await bcrypt.hash("admin123", 10);
-
   // Branches
   const b1 = await prisma.branch.create({ data: { name: "الفرع الرئيسي", city: "نواكشوط", address: "شارع المرسلات", phone: "43227748" } });
   const b2 = await prisma.branch.create({ data: { name: "فرعlinky", city: "نواذيبو", address: "شارع الميناء", phone: "44556677" } });
   const b3 = await prisma.branch.create({ data: { name: "فرع روصو", city: "روصو", address: "وسط المدينة", phone: "45667788" } });
 
   // Users
-  const owner = await prisma.user.create({ data: { name: "المالك", phone: "00000000", pin: adminPin, role: "OWNER", baseSalary: 0, commissionPerTrip: 0 } });
+  const owner = await prisma.user.create({ data: { name: "المالك", phone: "36445523", pin, role: "OWNER", baseSalary: 0, commissionPerTrip: 0 } });
   const agent1 = await prisma.user.create({ data: { name: "أحمد التذاكر", phone: "43227748", pin, role: "TICKET_AGENT", branchId: b1.id, baseSalary: 50000, commissionPerTrip: 200 } });
   const agent2 = await prisma.user.create({ data: { name: "محمد الشحن", phone: "12345678", pin, role: "CARGO_AGENT", branchId: b1.id, baseSalary: 45000, commissionPerTrip: 100 } });
   const driver1 = await prisma.user.create({ data: { name: "علي السائق", phone: "55667788", pin, role: "DRIVER", branchId: b1.id, baseSalary: 80000, commissionPerTrip: 5000 } });
@@ -68,7 +66,7 @@ async function main() {
 
   console.log("Seed data created successfully!");
   console.log("Login credentials:");
-  console.log("  Owner: 00000000 / admin123");
+  console.log("  Owner: 36445523 / 1234");
   console.log("  Agent: 43227748 / 1234");
   console.log("  Cargo: 12345678 / 1234");
   console.log("  Driver: 55667788 / 1234");

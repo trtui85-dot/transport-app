@@ -340,13 +340,16 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold text-ink">{t("type")}</h2>
           </div>
 
-          <div className="flex gap-2 mb-3">
+          <label className="block text-xs text-ink/50 mb-1.5">
+            {lang === "ar" ? "اسم النوع" : "Nom du type"}
+          </label>
+          <div className="flex gap-2 mb-4">
             <input
               type="text"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder={t("name")}
-              className="flex-1 h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink outline-none focus:border-rope/50"
+              className="flex-1 min-w-0 h-12 px-4 bg-sand border border-sand-dim rounded-xl text-sm text-ink placeholder:text-ink/40 outline-none focus:border-rope/50"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   editingCat ? handleUpdateCategory() : handleAddCategory();
@@ -355,7 +358,8 @@ export default function SettingsPage() {
             />
             <button
               onClick={editingCat ? handleUpdateCategory : handleAddCategory}
-              className="h-12 px-5 bg-rope text-white rounded-xl text-sm font-medium"
+              disabled={!newCatName.trim()}
+              className="h-12 px-5 shrink-0 bg-rope text-white rounded-xl text-sm font-medium disabled:opacity-40"
             >
               {editingCat ? t("save") : t("add")}
             </button>
@@ -363,18 +367,18 @@ export default function SettingsPage() {
 
           <div className="space-y-2">
             {categories.map((cat) => (
-              <div key={cat.id} className="flex items-center justify-between px-4 py-2.5 bg-sand rounded-xl">
-                <span className="text-sm text-ink">{cat.name}</span>
-                <div className="flex gap-1">
+              <div key={cat.id} className="flex items-center justify-between px-4 py-3 bg-sand rounded-xl">
+                <span className="text-sm text-ink truncate min-w-0">{cat.name}</span>
+                <div className="flex gap-1 shrink-0">
                   <button
                     onClick={() => { setEditingCat(cat); setNewCatName(cat.name); }}
-                    className="p-1.5 hover:bg-foam rounded-lg"
+                    className="p-2 hover:bg-foam rounded-lg"
                   >
                     <Pencil size={14} className="text-ink/40" />
                   </button>
                   <button
                     onClick={() => handleDeleteCategory(cat.id)}
-                    className="p-1.5 hover:bg-red-50 rounded-lg"
+                    className="p-2 hover:bg-red-50 rounded-lg"
                   >
                     <Trash2 size={14} className="text-red-400" />
                   </button>

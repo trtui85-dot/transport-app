@@ -55,6 +55,7 @@ const navItems: NavItem[] = [
   { href: "/branches", label: "branches", icon: Building2, roles: ["OWNER"] },
   { href: "/vehicles", label: "vehicles", icon: Car, roles: ["OWNER", "BRANCH_MANAGER"] },
   { href: "/trips", label: "trips", icon: Route, roles: ["OWNER", "BRANCH_MANAGER", "DRIVER"] },
+  { href: "/branch-trips", label: "branchTrips", icon: Route, roles: ["OWNER", "BRANCH_MANAGER"] },
   { href: "/driver", label: "myTrips", icon: CircleUser, roles: ["DRIVER"] },
   { href: "/expenses", label: "expenses", icon: Wallet, roles: ["OWNER", "BRANCH_MANAGER"] },
   { href: "/debts", label: "debts", icon: AlertCircle, roles: ["OWNER", "BRANCH_MANAGER"] },

@@ -39,6 +39,7 @@ export default function MorePage() {
     { href: "/branches", label: "branches", icon: Building2, show: isOwner },
     { href: "/vehicles", label: "vehicles", icon: Car, show: isManager || isOwner },
     { href: "/trips", label: "trips", icon: Route, show: isManager || isOwner || role === "DRIVER" },
+    { href: "/branch-trips", label: "branchTrips", icon: Route, show: role === "BRANCH_MANAGER" },
     { href: "/expenses", label: "expenses", icon: Wallet, show: isManager || isOwner },
     { href: "/debts", label: "debts", icon: AlertCircle, show: isManager || isOwner },
     { href: "/salaries", label: "salaries", icon: Users, show: isOwner },

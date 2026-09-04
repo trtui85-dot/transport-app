@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Wallet, X, Calendar, Tag, Trash2, Pencil } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDate } from "@/lib/datetime";
 
 interface ExpenseCategory {
   id: string;
@@ -259,7 +260,7 @@ export default function ExpensesPage() {
                   <div className="text-left">
                     <p className="text-sm font-bold text-red-600">-{expense.amount.toLocaleString()} {t("mr")}</p>
                     <p className="text-[10px] text-ink/40 mt-0.5">
-                      {new Date(expense.date).toLocaleDateString()}
+                      {fmtDate(expense.date)}
                     </p>
                   </div>
                 </div>

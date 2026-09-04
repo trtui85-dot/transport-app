@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, Calendar, Filter, Clock, User, FileText } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDateTime } from "@/lib/datetime";
 
 interface AuditEntry {
   id: string;
@@ -187,7 +188,7 @@ export default function AuditPage() {
                     )}
 
                     <p className="text-[10px] text-ink/30 mt-2">
-                      {new Date(entry.timestamp).toLocaleString()}
+                      {fmtDateTime(entry.timestamp)}
                     </p>
                   </div>
                 </div>

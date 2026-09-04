@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDate, fmtMonthYear } from "@/lib/datetime";
 
 interface SalaryEntry {
   id: string;
@@ -170,11 +171,7 @@ export default function SalariesPage() {
     setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   };
 
-  const formatMonth = (m: string) => {
-    const [y, mo] = m.split("-");
-    const date = new Date(parseInt(y), parseInt(mo) - 1);
-    return date.toLocaleDateString(lang === "ar" ? "ar-SA" : "fr-FR", { year: "numeric", month: "long" });
-  };
+  const formatMonth = (m: string) => fmtMonthYear(`${m}-01T00:00:00`);
 
   const handleGenerate = async () => {
     try {
@@ -492,7 +489,7 @@ export default function SalariesPage() {
                               unsettled.map((a) => (
                                 <div key={a.id} className="flex items-center justify-between text-[11px]">
                                   <span className="text-ink/60">
-                                    {new Date(a.createdAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "fr-FR")}
+                                    {fmtDate(a.createdAt)}
                                     {a.note ? ` · ${a.note}` : ""}
                                   </span>
                                   <span className="font-semibold text-ink">{a.amount.toLocaleString()}</span>

@@ -7,6 +7,7 @@ import {
   Wallet, Package, Route, RefreshCw, ChevronRight,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { routeArrow } from "@/lib/datetime";
 
 type Severity = "danger" | "warning" | "info";
 
@@ -158,7 +159,7 @@ export default function AlertsPage() {
                 severity: remaining <= 0 ? "danger" : "warning",
                 title:
                   lang === "ar"
-                    ? `أوشكت رحلة ${tp.departureBranch.name} → ${tp.arrivalBranch.name} على الامتلاء`
+                    ? `أوشكت رحلة ${tp.departureBranch.name} ${routeArrow(lang)} ${tp.arrivalBranch.name} على الامتلاء`
                     : `Trip ${tp.departureBranch.name} → ${tp.arrivalBranch.name} almost full`,
                 message:
                   remaining <= 0

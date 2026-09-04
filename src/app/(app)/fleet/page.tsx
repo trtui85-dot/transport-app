@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Car, Bus, Truck, Radio, ArrowRight, User, Users, Clock,
+  Car, Bus, Truck, Radio, ArrowRight, ArrowLeft, User, Users, Clock,
   Wrench, Ban, Navigation, RefreshCw,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -208,7 +209,11 @@ export default function FleetPage() {
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 text-xs text-ink/70">
           <span className="font-medium text-ink">{trip.departureBranch.name}</span>
-          <ArrowRight size={12} className="text-ink/30" />
+          {lang === "ar" ? (
+            <ArrowLeft size={12} className="text-ink/30" />
+          ) : (
+            <ArrowRight size={12} className="text-ink/30" />
+          )}
           <span className="font-medium text-ink">{trip.arrivalBranch.name}</span>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink/50">
@@ -317,10 +322,7 @@ export default function FleetPage() {
           <p className="text-xs text-ink/40 mt-0.5 flex items-center gap-1">
             <Radio size={12} className="text-rope" />
             {lang === "ar" ? "برج المراقبة" : "Monitoring tower"} ·{" "}
-            {lastRefresh.toLocaleTimeString(lang === "ar" ? "ar-SA" : "fr-FR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {fmtTime(lastRefresh)}
           </p>
         </div>
         <button
@@ -440,7 +442,7 @@ export default function FleetPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-ink">
                         {trip
-                          ? `${trip.departureBranch.name} → ${trip.arrivalBranch.name}`
+                          ? `${trip.departureBranch.name} ${routeArrow(lang)} ${trip.arrivalBranch.name}`
                           : vehicle.branch?.name}
                       </td>
                       <td className="px-4 py-3 text-xs text-ink">

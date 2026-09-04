@@ -310,7 +310,9 @@ export default function ReportsPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-ink text-sm">{row.user.name}</h3>
-                      <span className="text-[10px] text-ink/40">{row.user.role}</span>
+                      <span className="text-[10px] text-ink/40">
+                        {row.user.role === "OWNER" ? t("owner") : row.user.role === "BRANCH_MANAGER" ? t("manager") : row.user.role === "TICKET_AGENT" ? t("ticketAgent") : row.user.role === "CARGO_AGENT" ? t("cargoAgent") : row.user.role === "DRIVER" ? t("driver") : row.user.role}
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">

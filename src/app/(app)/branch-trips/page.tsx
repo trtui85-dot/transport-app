@@ -17,6 +17,7 @@ import {
   Ticket as TicketIcon,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDate, fmtTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -124,18 +125,9 @@ export default function BranchTripsPage() {
     fetchData();
   }, [fetchData]);
 
-  const formatTime = (dateStr: string) =>
-    new Date(dateStr).toLocaleTimeString(lang === "ar" ? "ar-SA" : "fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTime = (dateStr: string) => fmtTime(dateStr);
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString(lang === "ar" ? "ar-SA" : "fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  const formatDate = (dateStr: string) => fmtDate(dateStr);
 
   const statusLabel = (s: string) => t(s.toLowerCase() as never);
 
@@ -208,7 +200,7 @@ export default function BranchTripsPage() {
             <div className="flex-1">
               <p className="text-sm font-bold text-ink">{tr.departureBranch.name}</p>
             </div>
-            <span className="text-rope/60 text-sm shrink-0">→</span>
+            <span className="text-rope/60 text-sm shrink-0">{routeArrow(lang)}</span>
             <div className="flex-1 text-end">
               <p className="text-sm font-bold text-ink">{tr.arrivalBranch.name}</p>
             </div>
@@ -425,7 +417,7 @@ export default function BranchTripsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink/40">{t("trips")}</span>
                 <span className="text-sm font-semibold text-ink">
-                  {payingTrip.departureBranch.name} → {payingTrip.arrivalBranch.name}
+                  {payingTrip.departureBranch.name} {routeArrow(lang)} {payingTrip.arrivalBranch.name}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-sand-dim pt-2">

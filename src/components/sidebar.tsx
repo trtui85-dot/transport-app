@@ -94,6 +94,18 @@ export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
     setLang(lang === "ar" ? "fr" : "ar");
   };
 
+  const roleLabel = (r: UserRole) => {
+    switch (r) {
+      case "OWNER": return t("owner");
+      case "BRANCH_MANAGER": return t("manager");
+      case "TICKET_AGENT": return t("ticketAgent");
+      case "CARGO_AGENT": return t("cargoAgent");
+      case "DRIVER": return t("driver");
+      case "ACCOUNTANT": return t("accountant");
+      default: return r;
+    }
+  };
+
   return (
     <aside
       dir={lang === "ar" ? "rtl" : "ltr"}
@@ -101,7 +113,7 @@ export default function Sidebar({ user, currentPath, onLogout }: SidebarProps) {
     >
       <div className="px-5 py-6 border-b border-sand/10">
         <h1 className="text-lg font-bold tracking-tight">{t("appName")}</h1>
-        <p className="text-xs text-sand/50 mt-0.5">{user.role.replace("_", " ")}</p>
+        <p className="text-xs text-sand/50 mt-0.5">{roleLabel(user.role)}</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2">

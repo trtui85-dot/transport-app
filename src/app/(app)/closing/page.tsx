@@ -6,6 +6,7 @@ import {
   ArrowDownToLine, Building2, Wallet2,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtTime, fmtDateTime, routeArrow } from "@/lib/datetime";
 import ConfirmDialog from "@/components/confirm-dialog";
 
 interface Branch {
@@ -228,7 +229,7 @@ export default function ClosingPage() {
               </p>
               <p className="text-xs text-green-600/70">
                 {data.closedAt
-                  ? new Date(data.closedAt).toLocaleString()
+                  ? fmtDateTime(data.closedAt)
                   : data.date}
               </p>
             </div>
@@ -331,7 +332,7 @@ export default function ClosingPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-ink truncate">
-                      {tx.label}
+                      {tx.label.replace(" → ", ` ${routeArrow(lang)} `)}
                     </p>
                     <p className="text-[11px] text-ink/50 mt-0.5 truncate flex items-center gap-1">
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${meta.badge}`}>
@@ -352,12 +353,7 @@ export default function ClosingPage() {
                           <span>{tx.paymentMethodLabel}</span>
                         </span>
                       )}
-                      <span className="mr-auto">
-                        {new Date(tx.time).toLocaleTimeString(
-                          lang === "ar" ? "ar-SA" : "fr-FR",
-                          { hour: "2-digit", minute: "2-digit" }
-                        )}
-                      </span>
+                      <span className="mr-auto">{fmtTime(tx.time)}</span>
                     </p>
                   </div>
                   <p

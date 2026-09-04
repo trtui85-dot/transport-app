@@ -82,6 +82,9 @@ textarea:focus {
   body * {
     visibility: hidden;
   }
+  .no-print {
+    display: none !important;
+  }
   .print-ticket,
   .print-ticket * {
     visibility: visible;

@@ -18,6 +18,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDateTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -148,11 +149,7 @@ export default function DriverPage() {
 
   const history = myTrips.filter((t) => t.status === "ARRIVED").slice(0, 20);
 
-  const fmtDate = (s: string) =>
-    new Date(s).toLocaleString(lang === "ar" ? "ar-SA" : "fr-FR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+  const fmtDate = (s: string) => fmtDateTime(s);
 
   const statusLabel = (s: string) => t(s.toLowerCase() as never);
 
@@ -241,7 +238,7 @@ export default function DriverPage() {
       <div style="font-family: sans-serif; direction: ${lang === "ar" ? "rtl" : "ltr"};">
         <h1 style="font-size: 16px; margin-bottom: 8px;">${lang === "ar" ? "قائمة الركاب" : "Liste des passagers"}</h1>
         <p style="font-size: 12px; color: #666; margin-bottom: 4px;">
-          ${trip.departureBranch.name} → ${trip.arrivalBranch.name} · ${fmtDate(trip.departureTime)}
+          ${trip.departureBranch.name} ${routeArrow(lang)} ${trip.arrivalBranch.name} · ${fmtDate(trip.departureTime)}
         </p>
         <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
           ${lang === "ar" ? "المركبة" : "Véhicule"}: ${trip.vehicle.plateNumber} · ${trip.vehicle.type}
@@ -341,7 +338,7 @@ export default function DriverPage() {
             <div className="flex-1">
               <p className="text-sm font-bold text-ink">{tr.departureBranch.name}</p>
             </div>
-            <span className="text-rope/60 text-sm shrink-0">→</span>
+            <span className="text-rope/60 text-sm shrink-0">{routeArrow(lang)}</span>
             <div className="flex-1 text-end">
               <p className="text-sm font-bold text-ink">{tr.arrivalBranch.name}</p>
             </div>
@@ -582,7 +579,7 @@ export default function DriverPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink/40">{t("trips")}</span>
                 <span className="text-sm font-semibold text-ink">
-                  {addTrip.departureBranch.name} → {addTrip.arrivalBranch.name}
+                  {addTrip.departureBranch.name} {routeArrow(lang)} {addTrip.arrivalBranch.name}
                 </span>
               </div>
               <div className="flex items-center justify-between">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, X, Phone, DollarSign, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDate } from "@/lib/datetime";
 
 interface Debt {
   id: string;
@@ -254,7 +255,7 @@ export default function DebtsPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-sand-dim">
                     <div className="flex items-center gap-1.5 text-[10px] text-ink/40">
                       <Clock size={10} />
-                      {new Date(debt.createdAt).toLocaleDateString()}
+                      {fmtDate(debt.createdAt)}
                     </div>
                     {debt.status !== "PAID" && (
                       <button

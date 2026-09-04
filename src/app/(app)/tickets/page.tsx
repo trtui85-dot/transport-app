@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import SeatMap from "@/components/seat-map";
+import { fmtDate, fmtTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -298,18 +299,9 @@ export default function TicketsPage() {
 
   const paymentLogoFor = (tk: TicketIssued) => tk.paymentMethodConfig?.logo || null;
 
-  const formatTime = (dateStr: string) =>
-    new Date(dateStr).toLocaleTimeString(lang === "ar" ? "ar-SA" : "fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTime = (dateStr: string) => fmtTime(dateStr);
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString(lang === "ar" ? "ar-SA" : "fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  const formatDate = (dateStr: string) => fmtDate(dateStr);
 
   const handlePrint = (mode: "thermal" | "a5") => {
     const prev = document.getElementById("print-page-style");
@@ -364,7 +356,7 @@ export default function TicketsPage() {
     const phone = tk.passengerPhone.replace(/\D/g, "");
     const msg = encodeURIComponent(
       `${lang === "ar" ? "تذكرتك" : "Votre billet"}\n` +
-        `${selectedTrip?.departureBranch?.name || tk.trip.departureBranch.name} → ${selectedTrip?.arrivalBranch?.name || tk.trip.arrivalBranch.name}\n` +
+        `${selectedTrip?.departureBranch?.name || tk.trip.departureBranch.name} ${routeArrow(lang)} ${selectedTrip?.arrivalBranch?.name || tk.trip.arrivalBranch.name}\n` +
         `${lang === "ar" ? "التاريخ" : "Date"}: ${formatDate(tk.trip.departureTime)} ${formatTime(tk.trip.departureTime)}\n` +
         `${t("seat")}: ${tk.seatNumber}\n` +
         `${t("passengerName")}: ${tk.passengerName}\n` +
@@ -427,7 +419,7 @@ export default function TicketsPage() {
                       <span className="text-[10px] font-bold">{t("tickets")} #{tk.seatNumber}</span>
                     </div>
                     <div className="text-center font-bold text-[11px] leading-snug">
-                      {tk.trip.departureBranch.name} → {tk.trip.arrivalBranch.name}
+                      {tk.trip.departureBranch.name} {routeArrow(lang)} {tk.trip.arrivalBranch.name}
                     </div>
                     <div className="text-center text-[9px] text-gray-700 mb-2">
                       {formatDate(tk.trip.departureTime)} · {formatTime(tk.trip.departureTime)}
@@ -697,7 +689,7 @@ export default function TicketsPage() {
                       <span className="font-medium text-ink">
                         {trip.departureBranch.name}
                       </span>
-                      <span>→</span>
+                      <span>{routeArrow(lang)}</span>
                       <span className="font-medium text-ink">{trip.arrivalBranch.name}</span>
                       <span className="mr-auto text-rope font-semibold">
                         {trip.price.toLocaleString()} {t("mr")}
@@ -729,7 +721,7 @@ export default function TicketsPage() {
             <div className="flex items-center gap-2 text-sm text-ink">
               <MapPin size={14} className="text-rope" />
               <span className="font-semibold">{selectedTrip.departureBranch.name}</span>
-              <span className="text-ink-faint">→</span>
+              <span className="text-ink-faint">{routeArrow(lang)}</span>
               <span className="font-semibold">{selectedTrip.arrivalBranch.name}</span>
               <span className="mr-auto text-rope font-bold">
                 {selectedTrip.price.toLocaleString()} {t("mr")}

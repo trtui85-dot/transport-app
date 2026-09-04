@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Plus, Route, ArrowRight, Clock, User, Car, X, Copy,
+  Plus, Route, ArrowRight, ArrowLeft, Clock, User, Car, X, Copy,
   ArrowUpDown, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDateTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -58,7 +59,7 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
 };
 
 export default function TripsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -276,14 +277,14 @@ export default function TripsPage() {
 
         <div className="flex items-center gap-2 mb-3">
           <div className="text-sm font-semibold text-ink">{trip.departureBranch.name}</div>
-          <ArrowRight size={14} className="text-ink/30" />
+          {lang === "ar" ? <ArrowLeft size={14} className="text-ink/30" /> : <ArrowRight size={14} className="text-ink/30" />}
           <div className="text-sm font-semibold text-ink">{trip.arrivalBranch.name}</div>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs text-ink/60 mb-3">
           <div className="flex items-center gap-1">
             <Clock size={12} />
-            <span>{new Date(trip.departureTime).toLocaleString()}</span>
+            <span>{fmtDateTime(trip.departureTime)}</span>
           </div>
           <div className="flex items-center gap-1">
             <User size={12} />
@@ -387,10 +388,10 @@ export default function TripsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-ink text-xs">
-                        {trip.departureBranch.name} → {trip.arrivalBranch.name}
+                        {trip.departureBranch.name} {routeArrow(lang)} {trip.arrivalBranch.name}
                       </td>
                       <td className="px-4 py-3 text-ink/60 text-xs">
-                        {new Date(trip.departureTime).toLocaleString()}
+                        {fmtDateTime(trip.departureTime)}
                       </td>
                       <td className="px-4 py-3 text-ink text-xs">{trip.driver.name}</td>
                       <td className="px-4 py-3 text-ink text-xs" dir="ltr">{trip.vehicle.plateNumber}</td>

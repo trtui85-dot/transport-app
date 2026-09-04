@@ -6,6 +6,7 @@ import {
   MapPin, Clock, CircleDollarSign, Filter,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDate, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -47,7 +48,7 @@ const VEHICLE_ICONS: Record<string, typeof Car> = {
 };
 
 export default function VehiclesPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -230,14 +231,14 @@ export default function VehiclesPage() {
                     <div className="flex-1 bg-foam border border-sand-dim rounded-xl p-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-ink">
-                          {trip.departureBranch.name} → {trip.arrivalBranch.name}
+                          {trip.departureBranch.name} {routeArrow(lang)} {trip.arrivalBranch.name}
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${tripStatusColor(trip.status)}`}>
                           {trip.status}
                         </span>
                       </div>
                       <p className="text-xs text-ink/50">
-                        {new Date(trip.departureTime).toLocaleDateString()} &bull; {trip.driver.name}
+                        {fmtDate(trip.departureTime)} &bull; {trip.driver.name}
                       </p>
                     </div>
                   </div>

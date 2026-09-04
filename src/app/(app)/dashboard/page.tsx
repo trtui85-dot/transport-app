@@ -20,6 +20,7 @@ import {
   Check,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtTime, routeArrow } from "@/lib/datetime";
 
 interface BranchData {
   branch: { id: string; name: string; city: string };
@@ -132,6 +133,21 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [role, setRole] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const json = await res.json();
+          setRole(json.user?.role || "");
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   const [bp, setBp] = useState<BranchPaymentsData | null>(null);
   const [bpError, setBpError] = useState("");
@@ -219,7 +235,33 @@ export default function DashboardPage() {
   });
 
   const routeLabel = (tk: BpTicket) =>
-    `${tk.trip.departureBranch.name} → ${tk.trip.arrivalBranch.name}`;
+    `${tk.trip.departureBranch.name} ${routeArrow(lang)} ${tk.trip.arrivalBranch.name}`;
+
+  if (role === "TICKET_AGENT" || role === "CARGO_AGENT") {
+    const isTicket = role === "TICKET_AGENT";
+    const href = isTicket ? "/tickets" : "/cargo";
+    const label = isTicket ? t("newTicket") : t("newCargo");
+    const subtitle = isTicket ? t("tickets") : t("cargo");
+    const Icon = isTicket ? Ticket : Package;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Link
+          href={href}
+          className="w-full max-w-sm bg-foam border border-sand-dim rounded-3xl p-10 flex flex-col items-center gap-4 text-center hover:bg-rope hover:text-white transition-colors"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-rope/10 flex items-center justify-center">
+            <Icon size={40} className="text-rope" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-ink font-[family-name:var(--font-display)]">
+              {label}
+            </p>
+            <p className="text-sm text-ink/50 mt-1">{subtitle}</p>
+          </div>
+        </Link>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -249,10 +291,7 @@ export default function DashboardPage() {
           {t("dashboard")}
         </h1>
         <span className="text-xs text-ink-faint">
-          {lastRefresh.toLocaleTimeString(lang === "ar" ? "ar-SA" : "fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {fmtTime(lastRefresh)}
         </span>
       </div>
 

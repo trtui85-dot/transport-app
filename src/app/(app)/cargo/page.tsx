@@ -11,6 +11,7 @@ import {
   Truck,
   MapPin,
   ArrowRight,
+  ArrowLeft,
   Box,
   FileText,
   ShoppingBag,
@@ -26,6 +27,7 @@ import {
   Wallet2,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { fmtDateTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -444,7 +446,7 @@ export default function CargoPage() {
               <div className="flex items-center gap-2 text-xs text-ink">
                 <MapPin size={12} className="text-rope" />
                 <span>{trackResult.senderBranch.name}</span>
-                <ArrowRight size={10} />
+                {lang === "ar" ? <ArrowLeft size={10} /> : <ArrowRight size={10} />}
                 <span>{trackResult.receiverBranch.name}</span>
               </div>
               <p className="text-xs text-ink-faint">{trackResult.description}</p>
@@ -765,7 +767,7 @@ export default function CargoPage() {
                       <div className="flex items-center gap-2 mt-1 text-xs text-ink-faint">
                         <MapPin size={10} />
                         <span>{item.senderBranch.name}</span>
-                        <ArrowRight size={8} />
+                        {lang === "ar" ? <ArrowLeft size={8} /> : <ArrowRight size={8} />}
                         <span>{item.receiverBranch.name}</span>
                       </div>
 
@@ -852,7 +854,7 @@ export default function CargoPage() {
                       <div className="bg-rope/5 rounded-xl p-3 space-y-1">
                         <p className="text-[10px] text-ink/40 font-semibold">{t("trip")}</p>
                         <p className="text-sm text-ink">
-                          {item.trip.departureBranch.name} → {item.trip.arrivalBranch.name}
+                          {item.trip.departureBranch.name} {routeArrow(lang)} {item.trip.arrivalBranch.name}
                         </p>
                         <p className="text-[10px] text-ink/40" dir="ltr">
                           {item.trip.vehicle.plateNumber}
@@ -996,10 +998,10 @@ export default function CargoPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-ink">
-                          {tr.departureBranch.name} → {tr.arrivalBranch.name}
+                          {tr.departureBranch.name} {routeArrow(lang)} {tr.arrivalBranch.name}
                         </p>
                         <p className="text-[10px] text-ink/40 mt-0.5" dir="ltr">
-                          {tr.vehicle.plateNumber} · {new Date(tr.departureTime).toLocaleString(lang === "ar" ? "ar-SA" : "fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                          {tr.vehicle.plateNumber} · {fmtDateTime(tr.departureTime)}
                         </p>
                       </div>
                       <Truck size={16} className="text-rope" />

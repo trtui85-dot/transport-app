@@ -19,6 +19,10 @@ import {
   User,
   Weight,
   DollarSign,
+  ChevronDown,
+  ChevronUp,
+  Ban,
+  Route,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -47,6 +51,24 @@ interface CargoItem {
   status: string;
   createdAt: string;
   deliveredAt?: string;
+  tripId?: string | null;
+  trip?: {
+    id: string;
+    status: string;
+    departureTime: string;
+    vehicle: { plateNumber: string };
+    departureBranch: Branch;
+    arrivalBranch: Branch;
+  } | null;
+}
+
+interface Trip {
+  id: string;
+  status: string;
+  departureTime: string;
+  vehicle: { plateNumber: string };
+  departureBranch: Branch;
+  arrivalBranch: Branch;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -81,6 +103,10 @@ export default function CargoPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<string>("ALL");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [assigningCargo, setAssigningCargo] = useState<string | null>(null);
+  const [cancellingCargo, setCancellingCargo] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     packageType: "box",
@@ -99,9 +125,10 @@ export default function CargoPage() {
   const fetchCargo = useCallback(async () => {
     setLoading(true);
     try {
-      const [cargoRes, branchRes] = await Promise.all([
+      const [cargoRes, branchRes, tripRes] = await Promise.all([
         fetch("/api/cargo"),
         fetch("/api/branches"),
+        fetch("/api/trips"),
       ]);
       if (cargoRes.ok) {
         const data = await cargoRes.json();
@@ -110,6 +137,14 @@ export default function CargoPage() {
       if (branchRes.ok) {
         const data = await branchRes.json();
         setBranches(data.branches || []);
+      }
+      if (tripRes.ok) {
+        const data = await tripRes.json();
+        setTrips(
+          (data.trips || []).filter(
+            (tr: Trip) => tr.status !== "CANCELLED" && tr.status !== "ARRIVED"
+          )
+        );
       }
     } catch (err) {
       console.error("Fetch cargo error:", err);
@@ -229,6 +264,46 @@ export default function CargoPage() {
     }
   };
 
+  const handleAdvanceStatus = async (id: string, nextStatus: string, tripId?: string) => {
+    try {
+      const body: Record<string, string> = { status: nextStatus };
+      if (tripId) body.tripId = tripId;
+      const res = await fetch(`/api/cargo/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setAssigningCargo(null);
+        fetchCargo();
+      } else {
+        const data = await res.json();
+        setError(data.error || t("error"));
+      }
+    } catch {
+      setError(t("error"));
+    }
+  };
+
+  const handleCancelCargo = async (id: string) => {
+    try {
+      const res = await fetch(`/api/cargo/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+      if (res.ok) {
+        setCancellingCargo(null);
+        fetchCargo();
+      } else {
+        const data = await res.json();
+        setError(data.error || t("error"));
+      }
+    } catch {
+      setError(t("error"));
+    }
+  };
+
   const filteredCargo =
     filter === "ALL"
       ? cargo
@@ -236,13 +311,31 @@ export default function CargoPage() {
 
   const statusLabel = (status: string) => {
     const map: Record<string, string> = {
-      PENDING: t("boarding"),
-      IN_TRANSIT: t("dispatched"),
-      ARRIVED: t("arrived"),
-      DELIVERED: t("delivered"),
-      CANCELLED: t("cancelled"),
+      PENDING: t("cargoPending"),
+      IN_TRANSIT: t("cargoInTransit"),
+      ARRIVED: t("cargoArrived"),
+      DELIVERED: t("cargoDelivered"),
+      CANCELLED: t("cargoCancelled"),
     };
     return map[status] || status;
+  };
+
+  const nextStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: t("handToDriver"),
+      IN_TRANSIT: t("markArrived"),
+      ARRIVED: t("markDelivered2"),
+    };
+    return map[status] || "";
+  };
+
+  const nextStatus = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: "IN_TRANSIT",
+      IN_TRANSIT: "ARRIVED",
+      ARRIVED: "DELIVERED",
+    };
+    return map[status] || "";
   };
 
   return (
@@ -602,73 +695,325 @@ export default function CargoPage() {
           {filteredCargo.map((item) => {
             const Icon = PACKAGE_ICONS[item.packageType] || Package;
             const currentIdx = STATUS_FLOW.indexOf(item.status);
+            const isOpen = expanded === item.id;
+            const isAssigning = assigningCargo === item.id;
+            const isCancelling = cancellingCargo === item.id;
 
             return (
               <div
                 key={item.id}
-                className="bg-foam rounded-xl border border-sand-dim p-4"
+                className="bg-foam rounded-xl border border-sand-dim overflow-hidden"
               >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-sand flex items-center justify-center shrink-0">
-                    <Icon size={18} className="text-ink-faint" />
+                <button
+                  onClick={() => setExpanded(isOpen ? null : item.id)}
+                  className="w-full p-4 text-start"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-sand flex items-center justify-center shrink-0">
+                      <Icon size={18} className="text-ink-faint" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-ink truncate">
+                          {item.description}
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              STATUS_COLORS[item.status] || ""
+                            }`}
+                          >
+                            {statusLabel(item.status)}
+                          </span>
+                          {isOpen ? (
+                            <ChevronUp size={14} className="text-ink/40" />
+                          ) : (
+                            <ChevronDown size={14} className="text-ink/40" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 text-xs text-ink-faint">
+                        <MapPin size={10} />
+                        <span>{item.senderBranch.name}</span>
+                        <ArrowRight size={8} />
+                        <span>{item.receiverBranch.name}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-[10px] text-ink-faint font-mono">
+                          {item.trackingCode}
+                        </p>
+                        <p className="text-xs font-semibold text-rope">
+                          {item.amount.toLocaleString()} {t("mr")}
+                        </p>
+                      </div>
+
+                      {/* Status Flow Bar */}
+                      <div className="flex items-center gap-0.5 mt-2">
+                        {STATUS_FLOW.map((s, i) => (
+                          <div
+                            key={s}
+                            className={`h-1 flex-1 rounded-full ${
+                              i <= currentIdx ? "bg-rope" : "bg-sand-dim"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-ink truncate">
-                        {item.description}
-                      </p>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                          STATUS_COLORS[item.status] || ""
-                        }`}
-                      >
-                        {statusLabel(item.status)}
-                      </span>
+                </button>
+
+                {/* Expanded Details */}
+                {isOpen && (
+                  <div className="border-t border-sand-dim px-4 py-3 space-y-3">
+                    {/* Sender Info */}
+                    <div className="bg-sand rounded-xl p-3 space-y-1.5">
+                      <p className="text-[10px] text-ink/40 font-semibold">{t("sender")}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-ink">{item.senderName}</span>
+                        <span className="text-xs text-ink/60 flex items-center gap-1" dir="ltr">
+                          <Phone size={10} />
+                          {item.senderPhone}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-ink/40">{item.senderBranch.name}</p>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1 text-xs text-ink-faint">
-                      <MapPin size={10} />
-                      <span>{item.senderBranch.name}</span>
-                      <ArrowRight size={8} />
-                      <span>{item.receiverBranch.name}</span>
+                    {/* Receiver Info */}
+                    <div className="bg-sand rounded-xl p-3 space-y-1.5">
+                      <p className="text-[10px] text-ink/40 font-semibold">{t("receiver")}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-ink">{item.receiverName}</span>
+                        <span className="text-xs text-ink/60 flex items-center gap-1" dir="ltr">
+                          <Phone size={10} />
+                          {item.receiverPhone}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-ink/40">{item.receiverBranch.name}</p>
                     </div>
 
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-[10px] text-ink-faint font-mono">
-                        {item.trackingCode}
-                      </p>
-                      <p className="text-xs font-semibold text-rope">
-                        {item.amount.toLocaleString()} {t("mr")}
-                      </p>
+                    {/* Cargo Details */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-sand rounded-xl p-2 text-center">
+                        <p className="text-[10px] text-ink/40">{t("weight")}</p>
+                        <p className="text-sm font-semibold text-ink">{item.weight} {t("kg")}</p>
+                      </div>
+                      <div className="bg-sand rounded-xl p-2 text-center">
+                        <p className="text-[10px] text-ink/40">{t("packageType")}</p>
+                        <p className="text-sm font-semibold text-ink">{item.packageType}</p>
+                      </div>
+                      <div className="bg-sand rounded-xl p-2 text-center">
+                        <p className="text-[10px] text-ink/40">{t("paymentMethod")}</p>
+                        <p className="text-sm font-semibold text-ink">{item.paymentMethod}</p>
+                      </div>
                     </div>
 
-                    {/* Status Flow Bar */}
-                    <div className="flex items-center gap-0.5 mt-2">
-                      {STATUS_FLOW.map((s, i) => (
-                        <div
-                          key={s}
-                          className={`h-1 flex-1 rounded-full ${
-                            i <= currentIdx ? "bg-rope" : "bg-sand-dim"
-                          }`}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Delivered Button */}
-                    {item.status === "ARRIVED" && (
-                      <button
-                        onClick={() => handleMarkDelivered(item.id)}
-                        className="mt-3 w-full h-9 rounded-lg bg-success text-white text-xs font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
-                      >
-                        <Check size={14} />
-                        {t("markDelivered")}
-                      </button>
+                    {/* Trip Info */}
+                    {item.trip && (
+                      <div className="bg-rope/5 rounded-xl p-3 space-y-1">
+                        <p className="text-[10px] text-ink/40 font-semibold">{t("trip")}</p>
+                        <p className="text-sm text-ink">
+                          {item.trip.departureBranch.name} → {item.trip.arrivalBranch.name}
+                        </p>
+                        <p className="text-[10px] text-ink/40" dir="ltr">
+                          {item.trip.vehicle.plateNumber}
+                        </p>
+                      </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      {item.status !== "DELIVERED" && item.status !== "CANCELLED" && (
+                        <>
+                          {item.status === "PENDING" && (
+                            <>
+                              <button
+                                onClick={() => setAssigningCargo(item.id)}
+                                className="flex-1 h-10 rounded-xl bg-rope text-white text-xs font-medium flex items-center justify-center gap-1.5"
+                              >
+                                <Truck size={14} />
+                                {t("handToDriver")}
+                              </button>
+                              <button
+                                onClick={() => setCancellingCargo(item.id)}
+                                className="h-10 px-3 rounded-xl bg-danger/10 text-danger text-xs font-medium flex items-center justify-center gap-1"
+                              >
+                                <Ban size={14} />
+                              </button>
+                            </>
+                          )}
+                          {item.status === "IN_TRANSIT" && (
+                            <button
+                              onClick={() => handleAdvanceStatus(item.id, "ARRIVED")}
+                              className="flex-1 h-10 rounded-xl bg-rope text-white text-xs font-medium flex items-center justify-center gap-1.5"
+                            >
+                              <MapPin size={14} />
+                              {t("markArrived")}
+                            </button>
+                          )}
+                          {item.status === "ARRIVED" && (
+                            <button
+                              onClick={() => handleAdvanceStatus(item.id, "DELIVERED")}
+                              className="flex-1 h-10 rounded-xl bg-success text-white text-xs font-medium flex items-center justify-center gap-1.5"
+                            >
+                              <Check size={14} />
+                              {t("markDelivered2")}
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {item.status === "CANCELLED" && (
+                        <span className="text-xs text-danger font-medium">
+                          {t("cargoCancelled")}
+                        </span>
+                      )}
+                      {item.status === "DELIVERED" && (
+                        <span className="text-xs text-success font-medium flex items-center gap-1">
+                          <Check size={14} />
+                          {t("cargoDelivered")}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Quick Action: IN_TRANSIT without expanded */}
+                {!isOpen && item.status === "PENDING" && (
+                  <div className="px-4 pb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAssigningCargo(item.id);
+                      }}
+                      className="w-full h-8 rounded-lg bg-rope/10 text-rope text-[11px] font-medium flex items-center justify-center gap-1"
+                    >
+                      <Truck size={12} />
+                      {t("handToDriver")}
+                    </button>
+                  </div>
+                )}
+                {!isOpen && item.status === "IN_TRANSIT" && (
+                  <div className="px-4 pb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdvanceStatus(item.id, "ARRIVED");
+                      }}
+                      className="w-full h-8 rounded-lg bg-rope/10 text-rope text-[11px] font-medium flex items-center justify-center gap-1"
+                    >
+                      <MapPin size={12} />
+                      {t("markArrived")}
+                    </button>
+                  </div>
+                )}
+                {!isOpen && item.status === "ARRIVED" && (
+                  <div className="px-4 pb-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdvanceStatus(item.id, "DELIVERED");
+                      }}
+                      className="w-full h-8 rounded-lg bg-success/10 text-success text-[11px] font-medium flex items-center justify-center gap-1"
+                    >
+                      <Check size={12} />
+                      {t("markDelivered2")}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Assign Trip Sheet */}
+      {assigningCargo && (
+        <div className="fixed inset-0 z-[90]">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setAssigningCargo(null)}
+          />
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:max-h-[90vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-ink">{t("assignTrip")}</h2>
+              <button
+                onClick={() => setAssigningCargo(null)}
+                className="p-2 hover:bg-sand rounded-xl"
+              >
+                <X size={20} className="text-ink/40" />
+              </button>
+            </div>
+
+            {trips.length === 0 ? (
+              <p className="text-sm text-ink/40 text-center py-8">{t("noResults")}</p>
+            ) : (
+              <div className="space-y-2">
+                {trips.map((tr) => (
+                  <button
+                    key={tr.id}
+                    onClick={() => handleAdvanceStatus(assigningCargo, "IN_TRANSIT", tr.id)}
+                    className="w-full p-3 bg-sand rounded-xl text-start hover:bg-sand-dim transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-ink">
+                          {tr.departureBranch.name} → {tr.arrivalBranch.name}
+                        </p>
+                        <p className="text-[10px] text-ink/40 mt-0.5" dir="ltr">
+                          {tr.vehicle.plateNumber} · {new Date(tr.departureTime).toLocaleString(lang === "ar" ? "ar-SA" : "fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                      </div>
+                      <Truck size={16} className="text-rope" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation */}
+      {cancellingCargo && (
+        <div className="fixed inset-0 z-[90]">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setCancellingCargo(null)}
+          />
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] left-0 right-0 bg-foam rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:max-h-[90vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-ink">{t("cancelCargo")}</h2>
+              <button
+                onClick={() => setCancellingCargo(null)}
+                className="p-2 hover:bg-sand rounded-xl"
+              >
+                <X size={20} className="text-ink/40" />
+              </button>
+            </div>
+
+            <p className="text-sm text-ink/60 mb-4">
+              {lang === "ar"
+                ? "هل أنت متأكد من إلغاء هذه الشحنة؟"
+                : "Êtes-vous sûr de vouloir annuler ce colis ?"}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancellingCargo(null)}
+                className="flex-1 h-12 border border-sand-dim rounded-xl text-sm text-ink/60 font-medium"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={() => handleCancelCargo(cancellingCargo)}
+                className="flex-1 h-12 bg-danger text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <Ban size={16} />
+                {t("cancelCargo")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

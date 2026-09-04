@@ -62,24 +62,41 @@ export async function PUT(
       ARRIVED: "DELIVERED",
     };
 
+    const CANCEL_FROM: Record<string, boolean> = {
+      PENDING: true,
+      IN_TRANSIT: true,
+    };
+
     if (body.status) {
       const cargo = await prisma.cargo.findUnique({ where: { id } });
       if (!cargo) {
         return NextResponse.json({ error: "Cargo not found" }, { status: 404 });
       }
 
-      const expectedNext = STATUS_FLOW[cargo.status];
-      if (expectedNext !== body.status) {
-        return NextResponse.json(
-          { error: `Cannot transition from ${cargo.status} to ${body.status}. Expected: ${expectedNext}` },
-          { status: 400 }
-        );
+      if (body.status === "CANCELLED") {
+        if (!CANCEL_FROM[cargo.status]) {
+          return NextResponse.json(
+            { error: `Cannot cancel cargo in ${cargo.status} status` },
+            { status: 400 }
+          );
+        }
+      } else {
+        const expectedNext = STATUS_FLOW[cargo.status];
+        if (expectedNext !== body.status) {
+          return NextResponse.json(
+            { error: `Cannot transition from ${cargo.status} to ${body.status}. Expected: ${expectedNext}` },
+            { status: 400 }
+          );
+        }
       }
 
       const updateData: Record<string, unknown> = { status: body.status };
       if (body.status === "DELIVERED") {
         updateData.deliveredAt = new Date();
         updateData.deliveredById = session.userId;
+      }
+      if (body.tripId !== undefined) {
+        updateData.tripId = body.tripId;
       }
 
       const updated = await prisma.cargo.update({

@@ -111,17 +111,17 @@ export default function DriverPage() {
       const meData = await meRes.json();
       setUser(meData.user);
 
-      const [tripRes, bpRes] = await Promise.all([
+      const [tripRes, pmRes] = await Promise.all([
         fetch("/api/trips"),
-        fetch("/api/branch-payments?limit=1"),
+        fetch("/api/payment-methods"),
       ]);
 
       if (tripRes.ok) {
         const d = await tripRes.json();
         setTrips((d.trips || []).filter((tr: Trip) => tr.status !== "CANCELLED"));
       }
-      if (bpRes.ok) {
-        const d = await bpRes.json();
+      if (pmRes.ok) {
+        const d = await pmRes.json();
         setMethods((d.methods || []).filter((m: PayMethod) => !m.isCredit));
       }
     } catch {

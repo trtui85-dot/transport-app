@@ -54,11 +54,15 @@ export default function ClosingPage() {
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
 
-  const fetchClosing = useCallback(async () => {
+  const fetchClosing = useCallback(async (branchId?: string) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/closing");
+      const qs = branchId ? `?branchId=${branchId}` : "";
+      const res = await fetch(`/api/closing${qs}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -75,8 +79,29 @@ export default function ClosingPage() {
   }, [t]);
 
   useEffect(() => {
-    fetchClosing();
-  }, [fetchClosing]);
+    (async () => {
+      const [meRes, branchRes] = await Promise.all([
+        fetch("/api/auth/me"),
+        fetch("/api/branches"),
+      ]);
+      if (meRes.ok) {
+        const me = await meRes.json();
+        setIsOwner(me.user?.role === "OWNER");
+      }
+      if (branchRes.ok) {
+        const data = await branchRes.json();
+        setBranches(data.branches || []);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (isOwner && branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0].id);
+      return;
+    }
+    fetchClosing(selectedBranch || undefined);
+  }, [isOwner, branches, selectedBranch, fetchClosing]);
 
   const fmt = (n: number) => `${n.toLocaleString()} ${t("mr")}`;
 
@@ -84,9 +109,10 @@ export default function ClosingPage() {
     setClosing(true);
     setError("");
     try {
-      const res = await fetch("/api/closing", { method: "POST" });
+      const qs = isOwner && selectedBranch ? `?branchId=${selectedBranch}` : "";
+      const res = await fetch(`/api/closing${qs}`, { method: "POST" });
       if (res.ok) {
-        fetchClosing();
+        fetchClosing(selectedBranch || undefined);
       } else {
         const json = await res.json();
         setError(json.error || t("error"));
@@ -168,6 +194,28 @@ export default function ClosingPage() {
           <Building2 size={12} className="text-rope" />
           {data.branch.name} · {data.branch.city || ""}
         </p>
+
+        {isOwner && (
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-ink/60 mb-1">
+              {lang === "ar" ? "الفرع:" : "Branche:"}
+            </label>
+            <select
+              value={selectedBranch}
+              onChange={(e) => {
+                setSelectedBranch(e.target.value);
+                fetchClosing(e.target.value);
+              }}
+              className="w-full md:w-64 h-10 px-3 rounded-xl bg-foam border border-sand-dim text-ink text-sm appearance-none"
+            >
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} - {b.city}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="px-4">

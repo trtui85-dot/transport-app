@@ -11,7 +11,7 @@ const toDateKey = (d: Date) => {
 
 const isSameLocalDay = (a: Date, b: Date) => toDateKey(a) === toDateKey(b);
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
@@ -21,7 +21,17 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const branchId = session.branchId;
+    let branchId = session.branchId;
+    if (session.role === "OWNER") {
+      const url = new URL(req.url);
+      const q = url.searchParams.get("branchId");
+      if (q) {
+        branchId = q;
+      } else {
+        const firstBranch = await prisma.branch.findFirst({ select: { id: true } });
+        branchId = firstBranch?.id || null;
+      }
+    }
     if (!branchId) {
       return NextResponse.json({ error: "Branch not found for this user" }, { status: 400 });
     }
@@ -133,7 +143,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
@@ -143,7 +153,11 @@ export async function POST() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const branchId = session.branchId;
+    let branchId = session.branchId;
+    if (session.role === "OWNER") {
+      const url = new URL(req.url);
+      branchId = url.searchParams.get("branchId") || branchId;
+    }
     if (!branchId) {
       return NextResponse.json({ error: "Branch not found for this user" }, { status: 400 });
     }

@@ -25,6 +25,7 @@ export async function GET() {
         senderBranch: true,
         receiverBranch: true,
         trip: true,
+        paymentMethodConfig: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
       receiverBranchId,
       amount,
       paymentMethod,
+      paymentMethodConfigId,
     } = await req.json();
 
     if (!description || !weight || !senderName || !senderPhone || !receiverName || !receiverPhone || !senderBranchId || !receiverBranchId || amount === undefined) {
@@ -86,10 +88,12 @@ export async function POST(req: Request) {
         receiverBranchId,
         amount: parseFloat(amount),
         paymentMethod: paymentMethod || "CASH",
+        paymentMethodConfigId: paymentMethodConfigId || null,
       },
       include: {
         senderBranch: true,
         receiverBranch: true,
+        paymentMethodConfig: true,
       },
     });
 

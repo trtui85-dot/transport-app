@@ -177,6 +177,7 @@ model PaymentMethodConfig {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   tickets   Ticket[]
+  cargo      Cargo[]
   branches  BranchPaymentMethod[]
 }
 
@@ -209,6 +210,8 @@ model Cargo {
   trip            Trip?       @relation(fields: [tripId], references: [id])
   amount          Float
   paymentMethod   PaymentMethod @default(CASH)
+  paymentMethodConfigId String?
+  paymentMethodConfig   PaymentMethodConfig? @relation(fields: [paymentMethodConfigId], references: [id])
   status          CargoStatus @default(PENDING)
   deliveredAt     DateTime?
   deliveredById   String?

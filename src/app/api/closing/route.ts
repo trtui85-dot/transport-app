@@ -48,7 +48,7 @@ export async function GET() {
           paymentMethodConfig: true,
         },
       }),
-      prisma.cargo.findMany({ where: { senderBranchId: branchId } }),
+      prisma.cargo.findMany({ where: { senderBranchId: branchId }, include: { paymentMethodConfig: true } }),
       prisma.expense.findMany({
         where: { branchId },
         include: { expenseCategory: true },
@@ -91,6 +91,11 @@ export async function GET() {
         amount: c.amount,
         time: c.createdAt.toISOString(),
         paymentMethod: c.paymentMethod,
+        paymentMethodLabel:
+          c.paymentMethodConfig?.nameAr ||
+          c.paymentMethodConfig?.name ||
+          c.paymentMethod,
+        paymentMethodLogo: c.paymentMethodConfig?.logo || null,
       })),
       ...todayExpenses.map((e) => ({
         id: e.id,

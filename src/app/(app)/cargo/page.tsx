@@ -23,6 +23,7 @@ import {
   ChevronUp,
   Ban,
   Route,
+  Wallet2,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
@@ -48,6 +49,13 @@ interface CargoItem {
   receiverBranch: Branch;
   amount: number;
   paymentMethod: string;
+  paymentMethodConfig?: {
+    id: string;
+    name: string;
+    nameAr: string;
+    logo: string | null;
+    isCredit: boolean;
+  } | null;
   status: string;
   createdAt: string;
   deliveredAt?: string;
@@ -69,6 +77,14 @@ interface Trip {
   vehicle: { plateNumber: string };
   departureBranch: Branch;
   arrivalBranch: Branch;
+}
+
+interface PaymentMethodConfig {
+  id: string;
+  name: string;
+  nameAr: string;
+  logo: string | null;
+  isCredit: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -107,6 +123,8 @@ export default function CargoPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [assigningCargo, setAssigningCargo] = useState<string | null>(null);
   const [cancellingCargo, setCancellingCargo] = useState<string | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>([]);
+  const [selectedMethod, setSelectedMethod] = useState<string>("");
 
   const [form, setForm] = useState({
     packageType: "box",
@@ -125,10 +143,11 @@ export default function CargoPage() {
   const fetchCargo = useCallback(async () => {
     setLoading(true);
     try {
-      const [cargoRes, branchRes, tripRes] = await Promise.all([
+      const [cargoRes, branchRes, tripRes, pmRes] = await Promise.all([
         fetch("/api/cargo"),
         fetch("/api/branches"),
         fetch("/api/trips"),
+        fetch("/api/payment-methods"),
       ]);
       if (cargoRes.ok) {
         const data = await cargoRes.json();
@@ -146,12 +165,20 @@ export default function CargoPage() {
           )
         );
       }
+      if (pmRes.ok) {
+        const data = await pmRes.json();
+        const methods = (data.methods || []) as PaymentMethodConfig[];
+        setPaymentMethods(methods);
+        if (methods.length > 0 && !selectedMethod) {
+          setSelectedMethod(methods[0].id);
+        }
+      }
     } catch (err) {
       console.error("Fetch cargo error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedMethod]);
 
   useEffect(() => {
     fetchCargo();
@@ -209,7 +236,8 @@ export default function CargoPage() {
           senderBranchId: form.senderBranchId,
           receiverBranchId: form.receiverBranchId,
           amount: form.amount,
-          paymentMethod: form.paymentMethod,
+          paymentMethod: "CASH",
+          paymentMethodConfigId: selectedMethod || null,
         }),
       });
 
@@ -621,21 +649,22 @@ export default function CargoPage() {
               <label className="block text-xs font-medium text-ink mb-2">
                 {t("paymentMethod")}
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["CASH", "DEBT", "WALLET"] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setForm({ ...form, paymentMethod: method })}
-                    className={`h-10 rounded-xl border-2 text-xs font-medium transition-all ${
-                      form.paymentMethod === method
-                        ? "border-rope bg-rope/10 text-rope"
-                        : "border-sand-dim bg-foam text-ink-faint"
-                    }`}
-                  >
-                    {t(method.toLowerCase() as "cash" | "debt" | "wallet")}
-                  </button>
-                ))}
+              <div className="flex gap-3 overflow-x-auto pb-2 lg:pb-0 lg:grid lg:grid-cols-3 lg:gap-3 scrollbar-thin">
+                {paymentMethods.length === 0 ? (
+                  <div className="flex gap-3">
+                    {([
+                      { id: "CASH", name: "Cash", nameAr: "نقدي", logo: null, isCredit: false },
+                      { id: "AJL", name: "Ajl", nameAr: "أجل", logo: null, isCredit: true },
+                      { id: "WALLET", name: "Portefeuille", nameAr: "محفظة", logo: null, isCredit: false },
+                    ] as PaymentMethodConfig[]).map((m) => (
+                      <CargoPaymentButton key={m.id} method={m} lang={lang} selected={selectedMethod === m.id} onSelect={() => setSelectedMethod(m.id)} />
+                    ))}
+                  </div>
+                ) : (
+                  paymentMethods.map((m) => (
+                    <CargoPaymentButton key={m.id} method={m} lang={lang} selected={selectedMethod === m.id} onSelect={() => setSelectedMethod(m.id)} />
+                  ))
+                )}
               </div>
             </div>
 
@@ -805,7 +834,16 @@ export default function CargoPage() {
                       </div>
                       <div className="bg-sand rounded-xl p-2 text-center">
                         <p className="text-[10px] text-ink/40">{t("paymentMethod")}</p>
-                        <p className="text-sm font-semibold text-ink">{item.paymentMethod}</p>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {item.paymentMethodConfig?.logo ? (
+                            <img src={item.paymentMethodConfig.logo} alt="" className="w-4 h-4 rounded" />
+                          ) : (
+                            <Wallet2 size={12} className="text-ink-faint" />
+                          )}
+                          <p className="text-xs font-semibold text-ink">
+                            {lang === "ar" ? item.paymentMethodConfig?.nameAr || item.paymentMethod : item.paymentMethodConfig?.name || item.paymentMethod}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -1017,5 +1055,53 @@ export default function CargoPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function CargoMethodLogo({ method, size = 28 }: { method?: PaymentMethodConfig | null; size?: number }) {
+  if (method?.logo) {
+    return (
+      <img src={method.logo} alt="" style={{ width: size, height: size }} className="rounded-lg object-cover shrink-0" />
+    );
+  }
+  return (
+    <span style={{ width: size, height: size }} className="rounded-lg bg-sand-dim flex items-center justify-center shrink-0">
+      <Wallet2 size={size * 0.55} className="text-ink-faint" />
+    </span>
+  );
+}
+
+function CargoPaymentButton({
+  method,
+  lang,
+  selected,
+  onSelect,
+}: {
+  method: PaymentMethodConfig;
+  lang: "ar" | "fr";
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const label = lang === "ar" && method.nameAr ? method.nameAr : method.name;
+  return (
+    <button
+      onClick={onSelect}
+      title={method.isCredit ? (lang === "ar" ? "آجل - الدفع عند الوصول" : "Ajl - paiement à l'arrivée") : undefined}
+      className={`shrink-0 min-w-[120px] lg:min-w-0 lg:w-full h-24 lg:h-24 rounded-xl border-2 flex flex-col items-center justify-center gap-2 px-3 transition-all active:scale-[0.97] relative ${
+        selected
+          ? "border-rope bg-rope-soft text-rope shadow-md"
+          : "border-sand-dim bg-foam text-ink hover:border-rope/40"
+      }`}
+    >
+      <CargoMethodLogo method={method} size={40} />
+      <span className={`text-sm font-semibold text-center ${selected ? "text-rope" : "text-ink"}`}>
+        {label}
+      </span>
+      {selected && (
+        <span className="absolute top-2 end-2 w-5 h-5 rounded-full bg-rope text-white flex items-center justify-center">
+          <Check size={12} />
+        </span>
+      )}
+    </button>
   );
 }

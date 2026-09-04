@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Ticket, Package, Wallet, ShieldCheck, Lock,
-  ArrowDownToLine, Building2,
+  ArrowDownToLine, Building2, Wallet2,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import ConfirmDialog from "@/components/confirm-dialog";
@@ -24,6 +24,8 @@ interface TransactionItem {
   trackingCode?: string;
   description?: string;
   paymentMethod?: string;
+  paymentMethodLabel?: string;
+  paymentMethodLogo?: string | null;
 }
 
 interface Summary {
@@ -292,6 +294,16 @@ export default function ClosingPage() {
                       )}
                       {tx.passengerName && <span>{tx.passengerName}</span>}
                       {tx.description && <span>{tx.description}</span>}
+                      {tx.paymentMethodLabel && (
+                        <span className="flex items-center gap-1">
+                          {tx.paymentMethodLogo ? (
+                            <img src={tx.paymentMethodLogo} alt="" className="w-3 h-3 rounded" />
+                          ) : (
+                            <Wallet2 size={10} />
+                          )}
+                          <span>{tx.paymentMethodLabel}</span>
+                        </span>
+                      )}
                       <span className="mr-auto">
                         {new Date(tx.time).toLocaleTimeString(
                           lang === "ar" ? "ar-SA" : "fr-FR",

@@ -16,6 +16,10 @@ const VEHICLE_STATUS_MAP: Record<string, string> = {
   ARRIVED: "ACTIVE",
 };
 
+const VEHICLE_BRANCH_MAP: Record<string, string> = {
+  ARRIVED: "arrivalBranchId",
+};
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -36,6 +40,9 @@ export async function GET(
         arrivalBranch: true,
         tickets: {
           orderBy: { seatNumber: "asc" },
+          include: {
+            issuedBy: { select: { id: true, name: true } },
+          },
         },
         cargo: true,
       },
@@ -91,6 +98,9 @@ export async function PUT(
       const vehicleUpdate: Record<string, unknown> = {};
       if (VEHICLE_STATUS_MAP[body.status]) {
         vehicleUpdate.status = VEHICLE_STATUS_MAP[body.status];
+      }
+      if (body.status === "ARRIVED") {
+        vehicleUpdate.branchId = trip.arrivalBranchId;
       }
 
       const updated = await prisma.$transaction(async (tx) => {

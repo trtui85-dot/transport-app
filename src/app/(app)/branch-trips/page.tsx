@@ -39,6 +39,8 @@ interface TripTicket {
   amount: number;
   paid: boolean;
   status?: string;
+  issuedById?: string;
+  issuedBy?: { id: string; name: string };
 }
 
 interface Trip {
@@ -264,6 +266,30 @@ export default function BranchTripsPage() {
                 </Link>
               )}
             </div>
+
+            {tr.tickets.length > 0 && (() => {
+              const byIssuer = new Map<string, { name: string; count: number; total: number }>();
+              for (const tk of tr.tickets) {
+                const key = tk.issuedBy?.id || tk.issuedById || "unknown";
+                const name = tk.issuedBy?.name || (lang === "ar" ? "غير معروف" : "Inconnu");
+                const prev = byIssuer.get(key) || { name, count: 0, total: 0 };
+                byIssuer.set(key, { ...prev, count: prev.count + 1, total: prev.total + tk.amount });
+              }
+              if (byIssuer.size <= 1) return null;
+              return (
+                <div className="px-4 py-3 bg-sand/30 border-b border-sand-dim">
+                  <p className="text-[10px] text-ink/40 mb-1.5">{lang === "ar" ? "ملخص السائقين" : "Résumé par chauffeur"}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(byIssuer.entries()).map(([id, info]) => (
+                      <span key={id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-rope/10 rounded-lg text-[11px] font-medium text-rope">
+                        {info.name}: {info.count} {lang === "ar" ? "ركاب" : "pax"} — {info.total.toLocaleString()} {t("mr")}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {tr.tickets.length === 0 ? (
               <p className="text-xs text-ink/40 text-center py-6">{t("noResults")}</p>
             ) : (

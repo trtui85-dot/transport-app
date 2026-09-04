@@ -12,6 +12,8 @@ export async function GET() {
     const where =
       session.role === "OWNER"
         ? {}
+        : session.role === "DRIVER"
+        ? { driverId: session.userId }
         : {
             OR: [
               { departureBranchId: session.branchId || "" },
@@ -26,7 +28,10 @@ export async function GET() {
         driver: { select: { id: true, name: true, phone: true } },
         departureBranch: true,
         arrivalBranch: true,
-        tickets: { where: { status: "CONFIRMED" } },
+        tickets: {
+          where: { status: "CONFIRMED" },
+          include: { issuedBy: { select: { id: true, name: true } } },
+        },
         cargo: true,
       },
       orderBy: { departureTime: "desc" },
@@ -57,6 +62,39 @@ export async function POST(req: Request) {
         { error: "vehicleId, driverId, departureBranchId, arrivalBranchId, departureTime, and price are required" },
         { status: 400 }
       );
+    }
+
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) {
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+    }
+
+    if (vehicle.branchId !== departureBranchId) {
+      return NextResponse.json({ error: "المركبة ليست في فرع الانطلاق" }, { status: 400 });
+    }
+
+    if (vehicle.status === "MAINTENANCE" || vehicle.status === "INACTIVE") {
+      return NextResponse.json({ error: "المركبة غير متاحة حالياً" }, { status: 400 });
+    }
+
+    const vehicleActiveTrip = await prisma.trip.findFirst({
+      where: {
+        vehicleId,
+        status: { in: ["DEPARTED", "IN_TRANSIT"] },
+      },
+    });
+    if (vehicleActiveTrip) {
+      return NextResponse.json({ error: "المركبة في رحلة حالياً" }, { status: 400 });
+    }
+
+    const driverActiveTrip = await prisma.trip.findFirst({
+      where: {
+        driverId,
+        status: { in: ["DEPARTED", "IN_TRANSIT"] },
+      },
+    });
+    if (driverActiveTrip) {
+      return NextResponse.json({ error: "السائق في رحلة حالياً" }, { status: 400 });
     }
 
     const trip = await prisma.trip.create({

@@ -202,6 +202,13 @@ const translations: Record<string, Record<string, string>> = {
     unpaid: "لم يدفع بعد",
     paidShort: "مدفوع",
     collect: "تحصيل",
+    addPassenger: "إضافة راكب",
+    printList: "طباعة القائمة",
+    seatGrid: "خريطة المقاعد",
+    taken: "محجوز",
+    free: "متاح",
+    tripActive: "رحلة نشطة",
+    tripHistory: "الرحلات السابقة",
   },
   fr: {
     appName: "Système de Gestion de Transport Terrestre",
@@ -402,6 +409,13 @@ const translations: Record<string, Record<string, string>> = {
     unpaid: "Non payé",
     paidShort: "Payé",
     collect: "Encaisser",
+    addPassenger: "Ajouter un passager",
+    printList: "Imprimer la liste",
+    seatGrid: "Plan des sièges",
+    taken: "Pris",
+    free: "Libre",
+    tripActive: "Trajet actif",
+    tripHistory: "Trajets passés",
   },
 };
 

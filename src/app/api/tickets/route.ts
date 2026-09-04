@@ -48,6 +48,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!["OWNER", "BRANCH_MANAGER", "TICKET_AGENT", "DRIVER"].includes(session.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { tripId, seatNumber, passengerName, passengerPhone, paymentMethod, paymentMethodConfigId, amount } =
       await req.json();
 
@@ -67,9 +71,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Trip not found" }, { status: 404 });
     }
 
-    if (trip.status !== "OPEN" && trip.status !== "SCHEDULED") {
+    if (session.role === "DRIVER" && trip.driverId !== session.userId) {
+      return NextResponse.json({ error: "Forbidden: not your trip" }, { status: 403 });
+    }
+
+    const isDriverAdding = session.role === "DRIVER";
+    if (!isDriverAdding && trip.status !== "OPEN" && trip.status !== "SCHEDULED") {
       return NextResponse.json(
         { error: "Trip is not open for booking" },
+        { status: 400 }
+      );
+    }
+    if (isDriverAdding && !["OPEN", "SCHEDULED", "DEPARTED", "IN_TRANSIT"].includes(trip.status)) {
+      return NextResponse.json(
+        { error: "Trip is not active" },
         { status: 400 }
       );
     }

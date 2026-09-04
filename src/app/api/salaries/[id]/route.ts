@@ -54,15 +54,26 @@ export async function PUT(
       );
     }
 
-    const salary = await prisma.salary.update({
-      where: { id },
-      data: {
-        status,
-        ...(status === "PAID" && { paidAt: new Date() }),
-      },
-      include: {
-        user: { select: { id: true, name: true, phone: true, role: true } },
-      },
+    const salary = await prisma.$transaction(async (tx) => {
+      const updated = await tx.salary.update({
+        where: { id },
+        data: {
+          status,
+          ...(status === "PAID" && { paidAt: new Date() }),
+        },
+        include: {
+          user: { select: { id: true, name: true, phone: true, role: true } },
+        },
+      });
+
+      if (status === "PAID") {
+        await tx.userAdvance.updateMany({
+          where: { userId: updated.userId, settledAt: null },
+          data: { settledAt: new Date() },
+        });
+      }
+
+      return updated;
     });
 
     return NextResponse.json({ salary });

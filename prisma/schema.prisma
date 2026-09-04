@@ -90,6 +90,7 @@ model User {
   tickets     Ticket[]
   trips       Trip[]     @relation("DriverTrips")
   salaries    Salary[]
+  advances    UserAdvance[]
   auditLogs   AuditLog[]
 }
 
@@ -267,9 +268,21 @@ model Salary {
   base      Float
   commission Float      @default(0)
   total     Float
+  deduction Float        @default(0)
+  due       Float        @default(0)
   status    SalaryStatus @default(PENDING)
   paidAt    DateTime?
   createdAt DateTime     @default(now())
+}
+
+model UserAdvance {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  amount    Float
+  note      String?
+  settledAt DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model Setting {

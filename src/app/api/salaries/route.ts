@@ -59,12 +59,17 @@ export async function POST(req: Request) {
 
     const users = await prisma.user.findMany({
       where: { active: true },
+      include: {
+        advances: { where: { settledAt: null } },
+      },
     });
 
     const salaries = await prisma.$transaction(async (tx) => {
       const created = [];
 
       for (const user of users) {
+        const deduction = user.advances.reduce((s, a) => s + a.amount, 0);
+
         if (user.role === "DRIVER" && user.commissionPerTrip > 0) {
           const tripCount = await tx.trip.count({
             where: {
@@ -78,6 +83,7 @@ export async function POST(req: Request) {
           });
           const commission = tripCount * user.commissionPerTrip;
           const total = user.baseSalary + commission;
+          const due = total - deduction;
 
           const salary = await tx.salary.create({
             data: {
@@ -86,12 +92,15 @@ export async function POST(req: Request) {
               base: user.baseSalary,
               commission,
               total,
+              deduction,
+              due,
               status: "PENDING",
             },
           });
           created.push(salary);
         } else {
           const total = user.baseSalary;
+          const due = total - deduction;
           const salary = await tx.salary.create({
             data: {
               userId: user.id,
@@ -99,6 +108,8 @@ export async function POST(req: Request) {
               base: user.baseSalary,
               commission: 0,
               total,
+              deduction,
+              due,
               status: "PENDING",
             },
           });

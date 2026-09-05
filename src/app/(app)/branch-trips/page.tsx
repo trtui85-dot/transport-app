@@ -129,7 +129,8 @@ export default function BranchTripsPage() {
 
   const formatDate = (dateStr: string) => fmtDate(dateStr);
 
-  const statusLabel = (s: string) => t(s.toLowerCase() as never);
+  const statusLabel = (s: string) =>
+    t(s === "IN_TRANSIT" ? "inTransit" : (s.toLowerCase() as never));
 
   const seatInfo = (tr: Trip) => {
     const sold = tr.tickets.filter((tk) => tk.status !== "CANCELLED").length;

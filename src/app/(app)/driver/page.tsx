@@ -18,7 +18,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
-import { fmtDateTime, routeArrow } from "@/lib/datetime";
+import { fmtDateTime, fmtTime, routeArrow } from "@/lib/datetime";
 
 interface Branch {
   id: string;
@@ -151,7 +151,8 @@ export default function DriverPage() {
 
   const fmtDate = (s: string) => fmtDateTime(s);
 
-  const statusLabel = (s: string) => t(s.toLowerCase() as never);
+  const statusLabel = (s: string) =>
+    t(s === "IN_TRANSIT" ? "inTransit" : (s.toLowerCase() as never));
 
   const changeStatus = async (trip: Trip, status: string) => {
     setError("");
@@ -225,55 +226,98 @@ export default function DriverPage() {
       @media print {
         body * { visibility: hidden; }
         #print-area, #print-area * { visibility: visible; }
-        #print-area { position: absolute; inset: 0; padding: 16px; background: white; }
-        @page { size: A5; margin: 10mm; }
         .no-print { display: none !important; }
+        @page { size: A5; margin: 8mm; }
       }
     `;
     document.head.appendChild(style);
 
     const area = document.getElementById("print-area");
     if (!area) return;
+
+    const confirmed = trip.tickets
+      .filter((tk) => tk.status === "CONFIRMED")
+      .sort((a, b) => a.seatNumber - b.seatNumber);
+    const total = confirmed.reduce((s, tk) => s + tk.amount, 0);
+    const num = (n: number) => n.toLocaleString("en-US");
+    const dir = lang === "ar" ? "rtl" : "ltr";
+
     area.innerHTML = `
-      <div style="font-family: sans-serif; direction: ${lang === "ar" ? "rtl" : "ltr"};">
-        <h1 style="font-size: 16px; margin-bottom: 8px;">${lang === "ar" ? "قائمة الركاب" : "Liste des passagers"}</h1>
-        <p style="font-size: 12px; color: #666; margin-bottom: 4px;">
-          ${trip.departureBranch.name} ${routeArrow(lang)} ${trip.arrivalBranch.name} · ${fmtDate(trip.departureTime)}
-        </p>
-        <p style="font-size: 12px; color: #666; margin-bottom: 12px;">
-          ${lang === "ar" ? "المركبة" : "Véhicule"}: ${trip.vehicle.plateNumber} · ${trip.vehicle.type}
-        </p>
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-          <thead>
-            <tr style="border-bottom: 2px solid #333;">
-              <th style="padding: 4px; text-align: start;">${lang === "ar" ? "مقعد" : "Siège"}</th>
-              <th style="padding: 4px; text-align: start;">${lang === "ar" ? "الاسم" : "Nom"}</th>
-              <th style="padding: 4px; text-align: start;">${lang === "ar" ? "الهاتف" : "Téléphone"}</th>
-              <th style="padding: 4px; text-align: start;">${lang === "ar" ? "المبلغ" : "Montant"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${trip.tickets
-              .filter((tk) => tk.status === "CONFIRMED")
-              .sort((a, b) => a.seatNumber - b.seatNumber)
-              .map(
-                (tk) => `
-              <tr style="border-bottom: 1px solid #ddd;">
-                <td style="padding: 3px;">${tk.seatNumber}</td>
-                <td style="padding: 3px;">${tk.passengerName}</td>
-                <td style="padding: 3px;" dir="ltr">${tk.passengerPhone}</td>
-                <td style="padding: 3px;">${tk.amount.toLocaleString()}</td>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; direction: ${dir}; color: #111; max-width: 420px; margin: 0 auto;">
+        <div style="border: 2px solid #0B1220; border-radius: 12px; overflow: hidden;">
+          <div style="background: #0B1220; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 16px; font-weight: 700;">${lang === "ar" ? "قائمة الركاب" : "Liste des passagers"}</div>
+              <div style="font-size: 10px; opacity: .7; margin-top: 2px;">${t("appName")}</div>
+            </div>
+            <div style="text-align: end; font-size: 10px; opacity: .85; line-height: 1.5;">
+              <div>${fmtDate(trip.departureTime)}</div>
+              <div>${fmtTime(trip.departureTime)}</div>
+            </div>
+          </div>
+
+          <div style="padding: 12px 16px; border-bottom: 1px dashed #bbb;">
+            <div style="font-size: 13px; font-weight: 700; text-align: center;">
+              ${trip.departureBranch.name} ${routeArrow(lang)} ${trip.arrivalBranch.name}
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: #555; margin-top: 8px;">
+              <span>${lang === "ar" ? "المركبة" : "Véhicule"}: <b>${trip.vehicle.plateNumber}</b> · ${trip.vehicle.type}</span>
+              <span>${lang === "ar" ? "مقاعد" : "Sièges"}: <b>${confirmed.length}/${trip.vehicle.seatCount}</b></span>
+            </div>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+              <tr style="background: #f2f3f5; color: #333;">
+                <th style="padding: 7px 10px; text-align: start;">${lang === "ar" ? "مقعد" : "Siège"}</th>
+                <th style="padding: 7px 10px; text-align: start;">${lang === "ar" ? "اسم الراكب" : "Passager"}</th>
+                <th style="padding: 7px 10px; text-align: start;">${lang === "ar" ? "الهاتف" : "Téléphone"}</th>
+                <th style="padding: 7px 10px; text-align: end;">${lang === "ar" ? "المبلغ" : "Montant"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                confirmed.length === 0
+                  ? `<tr><td colspan="4" style="padding: 14px 10px; text-align: center; color: #888;">${lang === "ar" ? "لا يوجد ركاب" : "Aucun passager"}</td></tr>`
+                  : confirmed
+                      .map(
+                        (tk) => `
+              <tr style="border-bottom: 1px solid #e5e5e5;">
+                <td style="padding: 6px 10px;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 5px; background: #0B1220; color: #fff; font-size: 10px; font-weight: 700;">${tk.seatNumber}</span>
+                </td>
+                <td style="padding: 6px 10px; font-weight: 600;">${tk.passengerName}</td>
+                <td style="padding: 6px 10px; direction: ltr; text-align: start;">${tk.passengerPhone}</td>
+                <td style="padding: 6px 10px; text-align: end; font-weight: 600;">${num(tk.amount)} ${t("mr")}</td>
               </tr>`
-              )
-              .join("")}
-          </tbody>
-          <tfoot>
-            <tr style="border-top: 2px solid #333; font-weight: bold;">
-              <td colspan="3" style="padding: 4px;">${lang === "ar" ? "الإجمالي" : "Total"}</td>
-              <td style="padding: 4px;">${trip.tickets.filter((tk) => tk.status === "CONFIRMED").reduce((s, tk) => s + tk.amount, 0).toLocaleString()}</td>
-            </tr>
-          </tfoot>
-        </table>
+                      )
+                      .join("")
+              }
+            </tbody>
+            ${
+              confirmed.length > 0
+                ? `<tfoot>
+              <tr style="background: #0B1220; color: #fff;">
+                <td colspan="2" style="padding: 8px 10px; font-weight: 700;">${lang === "ar" ? "الإجمالي" : "Total"} (${confirmed.length})</td>
+                <td colspan="2" style="padding: 8px 10px; text-align: end; font-weight: 800;">${num(total)} ${t("mr")}</td>
+              </tr>
+            </tfoot>`
+                : ""
+            }
+          </table>
+
+          <div style="padding: 14px 16px 10px; display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: #555;">
+            <div style="border-top: 1px dashed #999; padding-top: 4px; flex: 1; text-align: center;">
+              ${lang === "ar" ? "توقيع السائق" : "Signature du conducteur"}
+            </div>
+            <div style="border-top: 1px dashed #999; padding-top: 4px; flex: 1; text-align: center;">
+              ${lang === "ar" ? "التاريخ" : "Date"}
+            </div>
+          </div>
+          <div style="background: #f2f3f5; text-align: center; padding: 8px; font-size: 9px; color: #888;">
+            ${lang === "ar" ? "شكراً لسفركم معنا" : "Merci de voyager avec nous"} · ${t("appName")}
+          </div>
+        </div>
       </div>
     `;
 
@@ -437,25 +481,25 @@ export default function DriverPage() {
               </div>
             )}
 
-            {isActive && tr.status !== "ARRIVED" && tr.status !== "CANCELLED" && (
+            {tr.status !== "ARRIVED" && tr.status !== "CANCELLED" && (
               <div className="px-4 pb-4 pt-2">
                 <div className="grid grid-cols-2 gap-3">
-                  {(tr.status === "OPEN" || tr.status === "SCHEDULED") && (
+                  {(tr.status === "SCHEDULED" || tr.status === "OPEN" || tr.status === "FULL" || tr.status === "DEPARTED") && (
                     <button
-                      onClick={() => changeStatus(tr, "DEPARTED")}
+                      onClick={() => changeStatus(tr, "IN_TRANSIT")}
                       className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold bg-green-500 text-white active:scale-95"
                     >
                       <PlayCircle size={18} />
-                      {lang === "ar" ? "بدء الرحلة" : "Départ"}
+                      {lang === "ar" ? "منطلقة" : "En route"}
                     </button>
                   )}
-                  {(tr.status === "DEPARTED" || tr.status === "IN_TRANSIT") && (
+                  {tr.status === "IN_TRANSIT" && (
                     <button
                       onClick={() => changeStatus(tr, "ARRIVED")}
                       className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold bg-rope text-white active:scale-95"
                     >
                       <Flag size={18} />
-                      {lang === "ar" ? "وصول" : "Arrivée"}
+                      {lang === "ar" ? "وصلت" : "Arrivée"}
                     </button>
                   )}
                 </div>
@@ -469,7 +513,7 @@ export default function DriverPage() {
 
   return (
     <div className="space-y-5 pb-24 md:pb-8">
-      <div id="print-area" className="no-print" />
+      <div id="print-area" />
 
       <div className="flex items-center justify-between">
         <div>

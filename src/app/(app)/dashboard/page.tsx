@@ -263,7 +263,28 @@ export default function DashboardPage() {
     );
   }
 
-  if (loading) {
+  if (role === "DRIVER") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Link
+          href="/driver"
+          className="w-full max-w-sm bg-foam border border-sand-dim rounded-3xl p-10 flex flex-col items-center gap-4 text-center hover:bg-rope hover:text-white transition-colors"
+        >
+          <div className="w-20 h-20 rounded-3xl bg-rope/10 flex items-center justify-center">
+            <Route size={40} className="text-rope" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-ink font-[family-name:var(--font-display)]">
+              {t("myTrips")}
+            </p>
+            <p className="text-sm text-ink/50 mt-1">{t("trips")}</p>
+          </div>
+        </Link>
+      </div>
+    );
+  }
+
+  if (!role || loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <RefreshCw size={24} className="animate-spin text-rope" />

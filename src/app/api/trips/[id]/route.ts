@@ -82,7 +82,12 @@ export async function PUT(
 
     if (body.status) {
       const expectedNext = STATUS_FLOW[trip.status];
-      if (expectedNext !== body.status) {
+      const canStart =
+        body.status === "IN_TRANSIT" &&
+        ["SCHEDULED", "OPEN", "FULL", "DEPARTED"].includes(trip.status);
+      const canArrive =
+        body.status === "ARRIVED" && ["DEPARTED", "IN_TRANSIT"].includes(trip.status);
+      if (!canStart && !canArrive && expectedNext !== body.status) {
         return NextResponse.json(
           { error: `Cannot transition from ${trip.status} to ${body.status}. Expected: ${expectedNext}` },
           { status: 400 }

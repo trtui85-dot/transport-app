@@ -24,7 +24,13 @@ export async function GET() {
       include: {
         senderBranch: true,
         receiverBranch: true,
-        trip: true,
+        trip: {
+          include: {
+            departureBranch: true,
+            arrivalBranch: true,
+            vehicle: true,
+          },
+        },
         paymentMethodConfig: true,
       },
       orderBy: { createdAt: "desc" },

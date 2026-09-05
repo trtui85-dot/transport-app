@@ -854,10 +854,10 @@ export default function CargoPage() {
                       <div className="bg-rope/5 rounded-xl p-3 space-y-1">
                         <p className="text-[10px] text-ink/40 font-semibold">{t("trip")}</p>
                         <p className="text-sm text-ink">
-                          {item.trip.departureBranch.name} {routeArrow(lang)} {item.trip.arrivalBranch.name}
+                          {item.trip.departureBranch?.name ?? ""} {routeArrow(lang)} {item.trip.arrivalBranch?.name ?? ""}
                         </p>
                         <p className="text-[10px] text-ink/40" dir="ltr">
-                          {item.trip.vehicle.plateNumber}
+                          {item.trip.vehicle?.plateNumber ?? ""}
                         </p>
                       </div>
                     )}

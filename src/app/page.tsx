@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Globe, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Globe, Loader2, AlertCircle, X } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 export default function LoginPage() {
@@ -12,9 +12,22 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
   const pinRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(""), 3500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   const handlePinChange = (i: number, v: string) => {
     const digit = v.replace(/\D/g, "").slice(-1);
@@ -23,7 +36,11 @@ export default function LoginPage() {
     const newPin = next.join("");
     if (newPin.length <= 4) {
       setPin(newPin);
-      if (digit && i < 3) pinRefs.current[i + 1]?.focus();
+      if (newPin.length === 4) {
+        pinRefs.current[3]?.blur();
+      } else if (digit && i < 3) {
+        pinRefs.current[i + 1]?.focus();
+      }
     }
   };
 
@@ -51,14 +68,13 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (phone.length < 8) {
-      setError(lang === "ar" ? "رقم الهاتف قصير جداً" : "Numéro trop court");
+      showToast("رقم الهاتف يجب أن يتكون من ٨ أرقام");
       return;
     }
     if (pin.length < 4) {
-      setError(lang === "ar" ? "الرمز قصير جداً" : "Code trop court");
+      showToast("أدخل رمز الدخول المكون من ٤ أرقام");
       return;
     }
 
@@ -70,16 +86,14 @@ export default function LoginPage() {
         body: JSON.stringify({ phone, pin }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error || t("error"));
+        showToast("رقم الهاتف أو رمز الدخول غير صحيح");
         return;
       }
 
       router.push("/dashboard");
     } catch {
-      setError(lang === "ar" ? "خطأ في الاتصال" : "Erreur de connexion");
+      showToast("تعذر الاتصال بالخادم، تحقق من اتصال الإنترنت");
     } finally {
       setLoading(false);
     }
@@ -91,6 +105,26 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={handleLogin} className="min-h-dvh flex flex-col bg-sand">
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-sm">
+          <div
+            className="toast-appear bg-ink/95 text-white rounded-2xl shadow-xl px-4 py-3 flex items-start justify-between gap-3"
+            dir="rtl"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm leading-snug">{toast}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast("")}
+              className="text-white/60 hover:text-white transition-colors shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col items-center px-6 pt-16 pb-10">
         <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg mb-5">
           <img src="/icons/icon-192.png" alt="Transport" className="w-full h-full object-cover" />
@@ -115,7 +149,11 @@ export default function LoginPage() {
             className="w-full h-12 px-4 rounded-xl bg-foam border border-sand-dim text-ink text-center text-lg tracking-widest placeholder:text-ink-faint/50 focus:border-rope outline-none"
             placeholder="43XXXXXX"
             value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+              setPhone(v);
+              if (v.length === 8) pinRefs.current[0]?.focus();
+            }}
             autoFocus
           />
         </div>
@@ -151,12 +189,6 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
-
-        {error && (
-          <div className="bg-danger/10 text-danger text-sm rounded-xl px-4 py-2.5 text-center">
-            {error}
-          </div>
-        )}
       </div>
 
       <div className="mt-auto px-6 pt-8" style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>

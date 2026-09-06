@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, Eye, EyeOff, Globe, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Globe, Loader2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 export default function LoginPage() {
@@ -14,6 +14,40 @@ export default function LoginPage() {
   const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const pinRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const handlePinChange = (i: number, v: string) => {
+    const digit = v.replace(/\D/g, "").slice(-1);
+    const next = pin.split("");
+    next[i] = digit;
+    const newPin = next.join("");
+    if (newPin.length <= 4) {
+      setPin(newPin);
+      if (digit && i < 3) pinRefs.current[i + 1]?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      const next = pin.split("");
+      if (next[i]) {
+        next[i] = "";
+      } else if (i > 0) {
+        next[i - 1] = "";
+        pinRefs.current[i - 1]?.focus();
+      }
+      setPin(next.join(""));
+    }
+  };
+
+  const handlePinPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (digits) {
+      e.preventDefault();
+      setPin(digits);
+      pinRefs.current[3]?.focus();
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +92,8 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleLogin} className="min-h-dvh flex flex-col bg-sand">
       <div className="flex flex-col items-center px-6 pt-16 pb-10">
-        <div className="w-20 h-20 rounded-full bg-rope flex items-center justify-center mb-5 shadow-lg">
-          <Truck size={40} className="text-white" />
+        <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg mb-5">
+          <img src="/icons/icon-192.png" alt="Transport" className="w-full h-full object-cover" />
         </div>
         <h1
           className="text-3xl font-semibold text-ink font-[family-name:var(--font-display)] text-center leading-snug"
@@ -90,22 +124,30 @@ export default function LoginPage() {
           <label className="block text-sm font-medium text-ink mb-1.5">
             {t("pin")}
           </label>
-          <div className="relative">
-            <input
-              type={showPin ? "text" : "password"}
-              inputMode="numeric"
-              dir="ltr"
-              className="w-full h-12 px-4 rounded-xl bg-foam border border-sand-dim text-ink text-center text-lg tracking-[0.5em] placeholder:text-ink-faint/50 focus:border-rope outline-none"
-              placeholder="••••"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            />
+          <div className="flex items-center gap-2" dir="ltr">
+            {[0, 1, 2, 3].map((i) => (
+              <input
+                key={i}
+                ref={(el) => {
+                  pinRefs.current[i] = el;
+                }}
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                dir="ltr"
+                maxLength={1}
+                className="w-14 h-14 rounded-xl bg-foam border border-sand-dim text-ink text-center text-xl font-semibold focus:border-rope outline-none"
+                value={pin.split("")[i] || ""}
+                onChange={(e) => handlePinChange(i, e.target.value)}
+                onKeyDown={(e) => handlePinKeyDown(i, e)}
+                onPaste={handlePinPaste}
+              />
+            ))}
             <button
               type="button"
               onClick={() => setShowPin(!showPin)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink transition-colors"
+              className="w-12 h-14 flex items-center justify-center text-ink-faint hover:text-ink transition-colors"
             >
-              {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
